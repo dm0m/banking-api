@@ -23,13 +23,13 @@ public class Account extends AuditableEntity {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    @Column(name = "balance", nullable = false)
+    private BigDecimal balance;
+    
     @Column(name = "account_type", nullable = false)
     @Enumerated(EnumType.STRING)
     private AccountType accountType;
-
-    @Column(name = "balance", nullable = false)
-    private BigDecimal balance;
-
+    
     @Column(name = "currency", nullable = false)
     @Enumerated(EnumType.STRING)
     private AccountCurrency currency;
@@ -37,4 +37,56 @@ public class Account extends AuditableEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "account_status", nullable = false)
     private AccountStatus accountStatus;
+
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
+    }
+
+    public Customer getCustomer() {
+        return customer;
+    }
+
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
+    }
+
+    public AccountType getAccountType() {
+        return accountType;
+    }
+
+    public void setAccountType(AccountType accountType) {
+        this.accountType = accountType;
+    }
+
+    public BigDecimal getBalance() {
+        return balance;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+
+    public AccountCurrency getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(AccountCurrency currency) {
+        this.currency = currency;
+    }
+
+    public AccountStatus getAccountStatus() {
+        return accountStatus;
+    }
+
+    public void setAccountStatus(AccountStatus accountStatus) {
+        this.accountStatus = accountStatus;
+    }
+
+    public Long getId() {
+        return id;
+    }
 }
