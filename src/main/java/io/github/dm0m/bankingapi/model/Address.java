@@ -1,5 +1,10 @@
 package io.github.dm0m.bankingapi.model;
 
+import java.util.Locale;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.*;
 
 @Entity
@@ -26,7 +31,9 @@ public class Address extends AuditableEntity {
     @Column(name = "zip_code", nullable = false)
     private String zipCode;
 
-    @Column(name = "country", nullable = false)
+    // CHAR(2) in the database; without @JdbcTypeCode, ddl-auto=validate expects VARCHAR
+    @Column(name = "country", nullable = false, length = 2)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String country;
 
     public String getStreetNo() {
@@ -74,7 +81,7 @@ public class Address extends AuditableEntity {
     }
 
     public void setCountry(String country) {
-        this.country = country;
+        this.country = country.trim().toUpperCase(Locale.ROOT);
     }
 
     

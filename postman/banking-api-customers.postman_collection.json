@@ -53,7 +53,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -97,7 +97,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailBUpper}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailBUpper}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -124,7 +124,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -170,7 +170,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailAUpper}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailAUpper}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -217,7 +217,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -264,7 +264,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"   \",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"   \",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -311,7 +311,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"not-an-email\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"not-an-email\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -358,7 +358,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"2999-01-01\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"2999-01-01\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -405,7 +405,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+3361234567890123\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+3361234567890123\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -499,7 +499,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -546,7 +546,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12345678901\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"France\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12345678901\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -667,7 +667,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -800,7 +800,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -872,7 +872,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -942,7 +942,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -959,7 +959,7 @@
 									"    firstName: 'Jane', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailB'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer Jane failed', err || res.code, res && res.text());",
@@ -1033,7 +1033,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -1076,7 +1076,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"address\": {\n    \"streetNo\": \"5\",\n    \"street\": \"Cours Mirabeau\",\n    \"city\": \"Aix-en-Provence\",\n    \"state\": \"Provence\",\n    \"zipCode\": \"13100\",\n    \"country\": \"France\"\n  }\n}",
+							"raw": "{\n  \"address\": {\n    \"streetNo\": \"5\",\n    \"street\": \"Cours Mirabeau\",\n    \"city\": \"Aix-en-Provence\",\n    \"state\": \"Provence\",\n    \"zipCode\": \"13100\",\n    \"country\": \"FR\"\n  }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1103,7 +1103,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -1177,7 +1177,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -1251,7 +1251,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -1326,7 +1326,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
@@ -1448,7 +1448,7 @@
 									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
 									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
 									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
-									"               state: 'Ile-de-France', zipCode: '75001', country: 'France' } }) }",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
 									"}, (err, res) => {",
 									"  if (err || res.code !== 201) {",
 									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",

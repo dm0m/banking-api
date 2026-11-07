@@ -20,7 +20,7 @@ class CustomerMapperTest {
     private final CustomerMapper mapper = new CustomerMapper(new AddressMapper());
 
     private final AddressRequest address =
-            new AddressRequest("12", "Rue de Rivoli", "Paris", "Ile-de-France", "75001", "France");
+            new AddressRequest("12", "Rue de Rivoli", "Paris", "Ile-de-France", "75001", "FR");
 
     private CreateCustomerRequest request(String email) {
         return new CreateCustomerRequest("John", "Doe", "+33612345678", email, address, LocalDate.of(1990, 5, 15));
@@ -74,7 +74,7 @@ class CustomerMapperTest {
 
         assertThat(response).isEqualTo(new CustomerResponse(
                 42L, "John", "Doe", "+33612345678", "john@example.com", LocalDate.of(1990, 5, 15),
-                new AddressResponse("12", "Rue de Rivoli", "Paris", "Ile-de-France", "75001", "France"),
+                new AddressResponse("12", "Rue de Rivoli", "Paris", "Ile-de-France", "75001", "FR"),
                 created, updated));
     }
 }
