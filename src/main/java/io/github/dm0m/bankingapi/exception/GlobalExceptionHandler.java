@@ -18,9 +18,24 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ProblemDetail handleAccountNotFound(AccountNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(AccountNotClosableException.class)
+    public ProblemDetail handleAccountNotClosable(AccountNotClosableException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ProblemDetail handleEmailExists(EmailAlreadyExistsException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(UnsupportedCountryException.class)
+    public ProblemDetail handleUnsupportedCountry(UnsupportedCountryException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
