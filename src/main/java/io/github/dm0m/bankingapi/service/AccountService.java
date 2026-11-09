@@ -7,10 +7,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.dm0m.bankingapi.dto.AccountResponse;
+import io.github.dm0m.bankingapi.dto.DepositRequest;
 import io.github.dm0m.bankingapi.dto.OpenAccountRequest;
 import io.github.dm0m.bankingapi.exception.AccountNotClosableException;
 import io.github.dm0m.bankingapi.exception.AccountNotFoundException;
 import io.github.dm0m.bankingapi.exception.CustomerNotFoundException;
+import io.github.dm0m.bankingapi.exception.InactiveAccountException;
+import io.github.dm0m.bankingapi.exception.InvalidAmountException;
 import io.github.dm0m.bankingapi.mapper.AccountMapper;
 import io.github.dm0m.bankingapi.model.Account;
 import io.github.dm0m.bankingapi.model.Customer;
@@ -75,6 +78,18 @@ public class AccountService {
         }
         account.setAccountStatus(AccountStatus.INACTIVE);
         // flush now rather than at commit so auditing sets updatedAt before the response is built
+        accountRepository.flush();
+        return accountMapper.toResponse(account);
+    }
+
+    @Transactional
+    public AccountResponse deposit(Long id, DepositRequest request) {
+        BigDecimal amount = request.amount();
+        if (amount.signum() <= 0) throw new InvalidAmountException();
+        // lock row: a concurrent transfer or deposit on this account waits instead of losing this update
+        Account account = findAccountForUpdate(id);
+        if (account.getAccountStatus() != AccountStatus.ACTIVE) throw new InactiveAccountException(id);
+        account.setBalance(account.getBalance().add(amount));
         accountRepository.flush();
         return accountMapper.toResponse(account);
     }

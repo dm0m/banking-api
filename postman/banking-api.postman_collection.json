@@ -1,0 +1,5010 @@
+{
+	"info": {
+		"_postman_id": "b62e687d-0df2-4378-9244-066294fa1255",
+		"name": "Banking API",
+		"description": "Each request is self-contained: its pre-request script creates any customer, account, deposit or transfer it needs. Requests can be sent individually or run in any order.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create",
+			"item": [
+				{
+					"name": "1. Create customer A (valid)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 201', () => pm.response.to.have.status(201));",
+									"const b = pm.response.json();",
+									"pm.test('Location header points to new customer', () => {",
+									"  pm.expect(pm.response.headers.get('Location')).to.include('/customers/' + b.id);",
+									"});",
+									"pm.test('response has id, address and audit dates', () => {",
+									"  pm.expect(b.id).to.be.a('number');",
+									"  pm.expect(b.address.city).to.eql('Paris');",
+									"  pm.expect(b.createdAt).to.be.a('string');",
+									"});",
+									"pm.test('email stored as sent (already lowercase)', () => {",
+									"  pm.expect(b.email).to.eql(pm.variables.get('emailA'));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Create customer B (mixed-case email is lowercased)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 201', () => pm.response.to.have.status(201));",
+									"const b = pm.response.json();",
+									"pm.test('email is lowercase', () => pm.expect(b.email).to.eql(b.email.toLowerCase()));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailBUpper}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Duplicate email, different case -> 409",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 409', () => pm.response.to.have.status(409));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(409);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailAUpper}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Missing email -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Blank firstName -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"   \",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Invalid email format -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"not-an-email\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Date of birth in the future -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"2999-01-01\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Phone longer than 16 chars -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+3361234567890123\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Missing address -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Address with blank city (nested @Valid) -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11. streetNo longer than 10 chars -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+33612345678\",\n  \"email\": \"{{emailA}}\",\n  \"address\": {\n    \"streetNo\": \"12345678901\",\n    \"street\": \"Rue de Rivoli\",\n    \"city\": \"Paris\",\n    \"state\": \"Ile-de-France\",\n    \"zipCode\": \"75001\",\n    \"country\": \"FR\"\n  },\n  \"dob\": \"1990-05-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12. Malformed JSON -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"firstName\": \"John\", ",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "13. Wrong Content-Type -> 415",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 415', () => pm.response.to.have.status(415));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(415);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "hello"
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get",
+			"item": [
+				{
+					"name": "14. Get customer A -> 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('returns the right customer with address', () => {",
+									"  pm.expect(b.id).to.eql(Number(pm.variables.get('customerId')));",
+									"  pm.expect(b.address.street).to.eql('Rue de Rivoli');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "15. Get non-existent customer -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/999999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"999999999"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "16. Get with non-numeric id -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/abc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"abc"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Update",
+			"item": [
+				{
+					"name": "17. Update phone only -> 200, other fields unchanged",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('phone changed', () => pm.expect(b.phone).to.eql('+33699999999'));",
+									"pm.test('firstName untouched', () => pm.expect(b.firstName).to.eql('John'));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+33699999999\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "18. Update to own email in uppercase -> 200 (not 409)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('email still lowercase', () => pm.expect(pm.response.json().email).to.eql(pm.variables.get('emailA')));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{emailAUpper}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "19. Update to customer B's email -> 409",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'Jane', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailB'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer Jane failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerIdB', res.json().id);",
+									"  console.log('Setup: created customer Jane with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 409', () => pm.response.to.have.status(409));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(409);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{emailB}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "20. Update full address -> 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('city changed', () => pm.expect(pm.response.json().address.city).to.eql('Aix-en-Provence'));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"address\": {\n    \"streetNo\": \"5\",\n    \"street\": \"Cours Mirabeau\",\n    \"city\": \"Aix-en-Provence\",\n    \"state\": \"Provence\",\n    \"zipCode\": \"13100\",\n    \"country\": \"FR\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "21. Update partial address (city only) -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"address\": {\n    \"city\": \"Lyon\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "22. Update with empty firstName -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "23. [known gap] Update with whitespace firstName -> expect 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"description": "Fails today: @Size(min = 1) accepts \"   \". Fix with @Pattern(regexp = \".*\\\\S.*\") on UpdateCustomerRequest.",
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"   \"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "24. Update with invalid email -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"nope\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "25. Update non-existent customer -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/999999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"999999999"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+33600000000\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "26. DELETE is not supported -> 405",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customer(s) this request needs, then send the request.",
+									"pm.sendRequest({",
+									"  url: pm.variables.get('baseUrl') + '/customers',",
+									"  method: 'POST',",
+									"  header: { 'Content-Type': 'application/json' },",
+									"  body: { mode: 'raw', raw: JSON.stringify({",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678',",
+									"    email: pm.variables.get('emailA'), dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: 'FR' } }) }",
+									"}, (err, res) => {",
+									"  if (err || res.code !== 201) {",
+									"    console.error('Setup: creating customer John failed', err || res.code, res && res.text());",
+									"    return;",
+									"  }",
+									"  pm.variables.set('customerId', res.json().id);",
+									"  console.log('Setup: created customer John with id', res.json().id);",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 405', () => pm.response.to.have.status(405));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(405);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Accounts",
+			"item": [
+				{
+					"name": "27. Open EUR account -> 201, ACTIVE with zero balance",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => pm.variables.set('customerId', c));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 201', () => pm.response.to.have.status(201));",
+									"const b = pm.response.json();",
+									"pm.test('Location header points to new account', () => {",
+									"  pm.expect(pm.response.headers.get('Location')).to.include('/accounts/' + b.id);",
+									"});",
+									"pm.test('new account is active, empty and belongs to the customer', () => {",
+									"  pm.expect(b.accountStatus).to.eql('ACTIVE');",
+									"  pm.expect(Number(b.balance)).to.eql(0);",
+									"  pm.expect(b.currency).to.eql('EUR');",
+									"  pm.expect(b.customerId).to.eql(Number(pm.variables.get('customerId')));",
+									"});",
+									"pm.test('account number is a French IBAN (from the customer address)', () => {",
+									"  pm.expect(b.accountNumber).to.match(/^FR\\d{2}\\d{23}$/);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}/accounts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}",
+								"accounts"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountType\": \"CHECKING\",\n  \"currency\": \"EUR\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "28. Open account for non-existent customer -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/999999999/accounts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"999999999",
+								"accounts"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountType\": \"CHECKING\",\n  \"currency\": \"EUR\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "29. Open account with missing currency -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => pm.variables.set('customerId', c));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}/accounts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}",
+								"accounts"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountType\": \"SAVING\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "30. Open account with unknown currency -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => pm.variables.set('customerId', c));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}/accounts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}",
+								"accounts"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountType\": \"CHECKING\",\n  \"currency\": \"GBP\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "31. Open account for customer in unsupported IBAN country -> 422",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('US', c => pm.variables.set('customerId', c));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 422', () => pm.response.to.have.status(422));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(422);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}/accounts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}",
+								"accounts"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountType\": \"CHECKING\",\n  \"currency\": \"USD\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "32. Get account -> 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('returns the right account', () => {",
+									"  pm.expect(b.id).to.eql(Number(pm.variables.get('accountId')));",
+									"  pm.expect(b.customerId).to.eql(Number(pm.variables.get('customerId')));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "33. Get non-existent account -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/999999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"999999999"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "34. List accounts of customer -> 200 with both accounts",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', () => openAccount(c, 'USD', () => {}));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('returns the two accounts of this customer', () => {",
+									"  pm.expect(b).to.have.lengthOf(2);",
+									"  pm.expect(b.map(a => a.currency)).to.have.members(['EUR', 'USD']);",
+									"  b.forEach(a => pm.expect(a.customerId).to.eql(Number(pm.variables.get('customerId'))));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}/accounts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}",
+								"accounts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "35. List accounts of non-existent customer -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/999999999/accounts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"999999999",
+								"accounts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "36. Deposit -> 200, balance increased",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('balance is the deposited amount', () => pm.expect(Number(b.balance)).to.eql(250.5));",
+									"pm.test('returns the right account', () => pm.expect(b.id).to.eql(Number(pm.variables.get('accountId'))));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/deposit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"deposit"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 250.5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "37. Deposit with zero amount -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/deposit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"deposit"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 0\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "38. Deposit with negative amount -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/deposit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"deposit"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": -10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "39. Deposit with more than 4 decimals -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/deposit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"deposit"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 10.12345\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "40. Deposit with missing amount -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/deposit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"deposit"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "41. Deposit to a closed account -> 409",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', a => {",
+									"  pm.variables.set('accountId', a);",
+									"  closeAccount(a, () => {});",
+									"}));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 409', () => pm.response.to.have.status(409));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(409);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"not active\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/deposit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"deposit"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "42. Deposit to non-existent account -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/999999999/deposit",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"999999999",
+								"deposit"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "43. Close account with non-zero balance -> 409",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"  deposit(from, 100, () => {});",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 409', () => pm.response.to.have.status(409));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(409);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"balance\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{fromAccountId}}/close",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{fromAccountId}}",
+								"close"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "44. Close account with zero balance -> 200, INACTIVE",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('account is now inactive', () => pm.expect(pm.response.json().accountStatus).to.eql('INACTIVE'));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/close",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"close"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "45. Close an already closed account -> 409",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', a => {",
+									"  pm.variables.set('accountId', a);",
+									"  closeAccount(a, () => {});",
+									"}));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 409', () => pm.response.to.have.status(409));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(409);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/close",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"close"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "46. Close non-existent account -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/999999999/close",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"999999999",
+								"close"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Transfers",
+			"item": [
+				{
+					"name": "47. Transfer -> 201, money moves between accounts",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"  deposit(from, 100, () => {});",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 201', () => pm.response.to.have.status(201));",
+									"const b = pm.response.json();",
+									"pm.test('Location header points to new transfer', () => {",
+									"  pm.expect(pm.response.headers.get('Location')).to.include('/transfers/' + b.id);",
+									"});",
+									"pm.test('response describes the transfer', () => {",
+									"  pm.expect(b.fromAccountId).to.eql(Number(pm.variables.get('fromAccountId')));",
+									"  pm.expect(b.toAccountId).to.eql(Number(pm.variables.get('toAccountId')));",
+									"  pm.expect(Number(b.amount)).to.eql(30);",
+									"  pm.expect(b.currency).to.eql('EUR');",
+									"  pm.expect(b.createdAt).to.be.a('string');",
+									"});",
+									"// read both accounts back to prove the money moved",
+									"const base = pm.variables.get('baseUrl');",
+									"pm.sendRequest(base + '/accounts/' + pm.variables.get('fromAccountId'), (err, res) => {",
+									"  pm.test('source balance is 100 - 30 = 70', () => pm.expect(Number(res.json().balance)).to.eql(70));",
+									"});",
+									"pm.sendRequest(base + '/accounts/' + pm.variables.get('toAccountId'), (err, res) => {",
+									"  pm.test('target balance is 0 + 30 = 30', () => pm.expect(Number(res.json().balance)).to.eql(30));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 30\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "48. Transfer whole balance -> 201, source left at zero",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"  deposit(from, 100, () => {});",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 201', () => pm.response.to.have.status(201));",
+									"pm.sendRequest(pm.variables.get('baseUrl') + '/accounts/' + pm.variables.get('fromAccountId'), (err, res) => {",
+									"  pm.test('source balance is zero', () => pm.expect(Number(res.json().balance)).to.eql(0));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 100\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "49. Get transfer -> 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"  deposit(from, 100, () => transfer(from, to, 30, t => pm.variables.set('transferId', t)));",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('returns the right transfer', () => {",
+									"  pm.expect(b.id).to.eql(Number(pm.variables.get('transferId')));",
+									"  pm.expect(b.fromAccountId).to.eql(Number(pm.variables.get('fromAccountId')));",
+									"  pm.expect(Number(b.amount)).to.eql(30);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/transfers/{{transferId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers",
+								"{{transferId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "50. Transfer with insufficient funds -> 422",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 422', () => pm.response.to.have.status(422));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(422);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"low balance\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "51. Transfer between different currencies -> 422",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'USD', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 422', () => pm.response.to.have.status(422));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(422);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"currency\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "52. Transfer to the same account -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"distinct\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{fromAccountId}},\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "53. Transfer from a closed account -> 409",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"  closeAccount(from, () => {});",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 409', () => pm.response.to.have.status(409));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(409);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"not active\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "54. Transfer to a closed account -> 409",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"  closeAccount(to, () => {});",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 409', () => pm.response.to.have.status(409));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(409);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"not active\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "55. Transfer from non-existent account -> 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": 999999999,\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "56. Transfer to non-existent account -> 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": 999999999,\n  \"amount\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "57. Transfer with missing amount -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "58. Transfer with zero amount -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 0\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "59. Transfer with negative amount -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": -10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "60. Transfer with more than 4 decimals -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => openAccount(c, 'EUR', from => openAccount(c, 'EUR', to => {",
+									"  pm.variables.set('fromAccountId', from);",
+									"  pm.variables.set('toAccountId', to);",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fromAccountId\": {{fromAccountId}},\n  \"toAccountId\": {{toAccountId}},\n  \"amount\": 10.12345\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "61. Transfer with malformed JSON -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"fromAccountId\": 1, ",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "62. Get non-existent transfer -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/transfers/999999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers",
+								"999999999"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "63. Get transfer with non-numeric id -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/transfers/abc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"transfers",
+								"abc"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "64. Transfer history, page 1 -> sent and received, newest first",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"// account sends 10, receives 20, sends 30 (in that order), so newest first is 30, 20, 10",
+									"createCustomer('FR', c => openAccount(c, 'EUR', account => openAccount(c, 'EUR', other => {",
+									"  pm.variables.set('accountId', account);",
+									"  deposit(account, 100, () => deposit(other, 100, () =>",
+									"    transfer(account, other, 10, () =>",
+									"      transfer(other, account, 20, () =>",
+									"        transfer(account, other, 30, () => {})))));",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('newest two transfers first', () => pm.expect(b.content.map(t => Number(t.amount))).to.eql([30, 20]));",
+									"pm.test('page info counts all three transfers', () => {",
+									"  pm.expect(b.page.size).to.eql(2);",
+									"  pm.expect(b.page.number).to.eql(0);",
+									"  pm.expect(b.page.totalElements).to.eql(3);",
+									"  pm.expect(b.page.totalPages).to.eql(2);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/transfers?page=0&size=2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"transfers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "65. Transfer history, page 2 -> the oldest transfer",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"// account sends 10, receives 20, sends 30 (in that order), so newest first is 30, 20, 10",
+									"createCustomer('FR', c => openAccount(c, 'EUR', account => openAccount(c, 'EUR', other => {",
+									"  pm.variables.set('accountId', account);",
+									"  deposit(account, 100, () => deposit(other, 100, () =>",
+									"    transfer(account, other, 10, () =>",
+									"      transfer(other, account, 20, () =>",
+									"        transfer(account, other, 30, () => {})))));",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('only the oldest transfer is left', () => pm.expect(b.content.map(t => Number(t.amount))).to.eql([10]));",
+									"pm.test('page number is 1', () => pm.expect(b.page.number).to.eql(1));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/transfers?page=1&size=2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"transfers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "size",
+									"value": "2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "66. Transfer history sorted by amount ascending -> 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"// account sends 10, receives 20, sends 30 (in that order), so newest first is 30, 20, 10",
+									"createCustomer('FR', c => openAccount(c, 'EUR', account => openAccount(c, 'EUR', other => {",
+									"  pm.variables.set('accountId', account);",
+									"  deposit(account, 100, () => deposit(other, 100, () =>",
+									"    transfer(account, other, 10, () =>",
+									"      transfer(other, account, 20, () =>",
+									"        transfer(account, other, 30, () => {})))));",
+									"})));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('smallest amount first', () => {",
+									"  pm.expect(pm.response.json().content.map(t => Number(t.amount))).to.eql([10, 20, 30]);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/transfers?sort=amount,asc",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"transfers"
+							],
+							"query": [
+								{
+									"key": "sort",
+									"value": "amount,asc"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "67. Transfer history of account -> 200, empty page",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 200', () => pm.response.to.have.status(200));",
+									"const b = pm.response.json();",
+									"pm.test('response has the {content, page} shape', () => {",
+									"  pm.expect(b.content).to.be.an('array').that.is.empty;",
+									"  pm.expect(b.page.size).to.eql(5);",
+									"  pm.expect(b.page.number).to.eql(0);",
+									"  pm.expect(b.page.totalElements).to.eql(0);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/transfers?page=0&size=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"transfers"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "68. Transfer history with unknown sort property -> 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Setup: create the customers and accounts this request needs, then send the request.",
+									"const base = pm.variables.get('baseUrl');",
+									"let seq = 0;",
+									"function post(path, body, onOk) {",
+									"  const req = { url: base + path, method: 'POST', header: { 'Content-Type': 'application/json' } };",
+									"  if (body) req.body = { mode: 'raw', raw: JSON.stringify(body) };",
+									"  pm.sendRequest(req, (err, res) => {",
+									"    if (err || res.code >= 300) {",
+									"      console.error('Setup: POST ' + path + ' failed', err || res.code, res && res.text());",
+									"      return;",
+									"    }",
+									"    onOk(res.json());",
+									"  });",
+									"}",
+									"function createCustomer(country, onOk) {",
+									"  const email = 'setup.' + Date.now() + '.' + (seq++) + '.' + Math.floor(Math.random() * 1e6) + '@example.com';",
+									"  post('/customers', {",
+									"    firstName: 'John', lastName: 'Doe', phone: '+33612345678', email: email, dob: '1990-05-15',",
+									"    address: { streetNo: '12', street: 'Rue de Rivoli', city: 'Paris',",
+									"               state: 'Ile-de-France', zipCode: '75001', country: country } }, c => onOk(c.id));",
+									"}",
+									"function openAccount(customerId, currency, onOk) {",
+									"  post('/customers/' + customerId + '/accounts', { accountType: 'CHECKING', currency: currency }, a => onOk(a.id));",
+									"}",
+									"function closeAccount(accountId, onOk) {",
+									"  post('/accounts/' + accountId + '/close', null, () => onOk());",
+									"}",
+									"function deposit(accountId, amount, onOk) {",
+									"  post('/accounts/' + accountId + '/deposit', { amount: amount }, () => onOk());",
+									"}",
+									"function transfer(fromId, toId, amount, onOk) {",
+									"  post('/transfers', { fromAccountId: fromId, toAccountId: toId, amount: amount }, t => onOk(t.id));",
+									"}",
+									"createCustomer('FR', c => {",
+									"  pm.variables.set('customerId', c);",
+									"  openAccount(c, 'EUR', a => pm.variables.set('accountId', a));",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 400', () => pm.response.to.have.status(400));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(400);",
+									"  pm.expect(b).to.have.property('title');",
+									"});",
+									"pm.test('detail explains the problem', () => pm.expect(pm.response.json().detail).to.include(\"invalid sort property 'foo'\"));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/{{accountId}}/transfers?sort=foo",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"{{accountId}}",
+								"transfers"
+							],
+							"query": [
+								{
+									"key": "sort",
+									"value": "foo"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "69. Transfer history of non-existent account -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 404', () => pm.response.to.have.status(404));",
+									"pm.test('body is a ProblemDetail', () => {",
+									"  const b = pm.response.json();",
+									"  pm.expect(b.status).to.eql(404);",
+									"  pm.expect(b).to.have.property('title');",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/accounts/999999999/transfers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"accounts",
+								"999999999",
+								"transfers"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Runs before every request: fresh emails so requests never collide with earlier runs.",
+					"const ts = Date.now();",
+					"const emailA = `john.${ts}@example.com`;",
+					"const emailB = `jane.${ts}@example.com`;",
+					"pm.variables.set('emailA', emailA);",
+					"pm.variables.set('emailB', emailB);",
+					"pm.variables.set('emailAUpper', emailA.toUpperCase());",
+					"pm.variables.set('emailBUpper', emailB.toUpperCase());"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "customerId",
+			"value": ""
+		},
+		{
+			"key": "customerIdB",
+			"value": ""
+		},
+		{
+			"key": "emailA",
+			"value": ""
+		},
+		{
+			"key": "emailB",
+			"value": ""
+		},
+		{
+			"key": "emailAUpper",
+			"value": ""
+		},
+		{
+			"key": "emailBUpper",
+			"value": ""
+		},
+		{
+			"key": "accountId",
+			"value": ""
+		},
+		{
+			"key": "fromAccountId",
+			"value": ""
+		},
+		{
+			"key": "toAccountId",
+			"value": ""
+		},
+		{
+			"key": "transferId",
+			"value": ""
+		}
+	]
+}

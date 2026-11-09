@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.dm0m.bankingapi.dto.AccountResponse;
+import io.github.dm0m.bankingapi.dto.DepositRequest;
 import io.github.dm0m.bankingapi.dto.OpenAccountRequest;
 import io.github.dm0m.bankingapi.service.AccountService;
 import jakarta.validation.Valid;
@@ -40,6 +41,11 @@ public class AccountController {
     @GetMapping("/customers/{customerId}/accounts")
     public List<AccountResponse> getAccountsByCustomerId(@PathVariable Long customerId) {
         return accountService.getAccountsByCustomerId(customerId);
+    }
+
+    @PostMapping("/accounts/{id}/deposit")
+    public AccountResponse deposit(@PathVariable Long id, @Valid @RequestBody DepositRequest request) {
+        return accountService.deposit(id, request);
     }
 
     @PostMapping("/accounts/{id}/close")

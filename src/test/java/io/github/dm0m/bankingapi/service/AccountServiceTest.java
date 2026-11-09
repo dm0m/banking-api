@@ -21,10 +21,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import io.github.dm0m.bankingapi.dto.AccountResponse;
+import io.github.dm0m.bankingapi.dto.DepositRequest;
 import io.github.dm0m.bankingapi.dto.OpenAccountRequest;
 import io.github.dm0m.bankingapi.exception.AccountNotClosableException;
 import io.github.dm0m.bankingapi.exception.AccountNotFoundException;
 import io.github.dm0m.bankingapi.exception.CustomerNotFoundException;
+import io.github.dm0m.bankingapi.exception.InactiveAccountException;
+import io.github.dm0m.bankingapi.exception.InvalidAmountException;
 import io.github.dm0m.bankingapi.mapper.AccountMapper;
 import io.github.dm0m.bankingapi.model.Account;
 import io.github.dm0m.bankingapi.model.Address;
@@ -61,7 +64,6 @@ class AccountServiceTest {
         return customer;
     }
 
-    // an account as the repository would return it: already saved, so it has an id
     private Account existingAccount(Long id, String balance) {
         Account account = new Account();
         ReflectionTestUtils.setField(account, "id", id);
@@ -70,8 +72,6 @@ class AccountServiceTest {
         account.setAccountStatus(AccountStatus.ACTIVE);
         return account;
     }
-
-    // open
 
     @Test
     void open_existingCustomer_createsActiveAccountWithZeroBalance() {
@@ -129,8 +129,6 @@ class AccountServiceTest {
         verify(accountRepository, never()).save(any());
     }
 
-    // getAccountById
-
     @Test
     void getAccountById_existingAccount_returnsResponse() {
         when(accountRepository.findById(1L)).thenReturn(Optional.of(existingAccount(1L, "25.5000")));
@@ -150,8 +148,6 @@ class AccountServiceTest {
         assertThatThrownBy(() -> accountService.getAccountById(99L))
                 .isInstanceOf(AccountNotFoundException.class);
     }
-
-    // getAccountsByCustomerId
 
     @Test
     void getAccountsByCustomerId_returnsAllAccountsOfCustomer() {
@@ -180,8 +176,6 @@ class AccountServiceTest {
 
         assertThat(accountService.getAccountsByCustomerId(7L)).isEmpty();
     }
-
-    // close
 
     @Test
     void close_zeroBalance_setsStatusInactive() {
@@ -224,5 +218,52 @@ class AccountServiceTest {
 
         assertThatThrownBy(() -> accountService.close(99L))
                 .isInstanceOf(AccountNotFoundException.class);
+    }
+
+    @Test
+    void deposit_activeAccount_addsAmountToBalance() {
+        Account account = existingAccount(1L, "50.0000");
+        when(accountRepository.findForUpdateById(1L)).thenReturn(Optional.of(account));
+
+        AccountResponse response = accountService.deposit(1L, new DepositRequest(new BigDecimal("25.5")));
+
+        assertThat(account.getBalance()).isEqualByComparingTo("75.5");
+        assertThat(response.balance()).isEqualByComparingTo("75.5");
+        verify(accountRepository).flush();
+    }
+
+    @Test
+    void deposit_zeroAmount_isRejectedBeforeLocking() {
+        assertThatThrownBy(() -> accountService.deposit(1L, new DepositRequest(BigDecimal.ZERO)))
+                .isInstanceOf(InvalidAmountException.class);
+        verify(accountRepository, never()).findForUpdateById(any());
+    }
+
+    @Test
+    void deposit_unknownAccount_throwsAccountNotFound() {
+        when(accountRepository.findForUpdateById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> accountService.deposit(99L, new DepositRequest(BigDecimal.TEN)))
+                .isInstanceOf(AccountNotFoundException.class);
+    }
+
+    @Test
+    void deposit_inactiveAccount_isRejectedAndBalanceUnchanged() {
+        assertDepositRejectedForStatus(AccountStatus.INACTIVE);
+    }
+
+    @Test
+    void deposit_suspendedAccount_isRejectedAndBalanceUnchanged() {
+        assertDepositRejectedForStatus(AccountStatus.SUSPENDED);
+    }
+
+    private void assertDepositRejectedForStatus(AccountStatus status) {
+        Account account = existingAccount(1L, "50.0000");
+        account.setAccountStatus(status);
+        when(accountRepository.findForUpdateById(1L)).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> accountService.deposit(1L, new DepositRequest(BigDecimal.TEN)))
+                .isInstanceOf(InactiveAccountException.class);
+        assertThat(account.getBalance()).isEqualByComparingTo("50");
     }
 }

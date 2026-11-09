@@ -62,8 +62,7 @@ public class CustomerService {
             // update the existing address row in place instead of creating a new one
             addressMapper.updateEntity(customer.getAddress(), request.address());
         }
-        // no save() needed: the entity is managed. Flush now rather than at commit so auditing
-        // sets updatedAt before the response is built.
+        // entity is managed, so no save(); flush now so auditing sets updatedAt before the response is built
         customerRepository.flush();
         return customerMapper.toResponse(customer);
     }
