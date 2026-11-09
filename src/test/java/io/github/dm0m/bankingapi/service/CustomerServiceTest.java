@@ -39,7 +39,7 @@ class CustomerServiceTest {
     private final CustomerMapper customerMapper = new CustomerMapper(addressMapper);
     private CustomerService customerService;
     private final AddressRequest address =
-            new AddressRequest("12", "Rue de Rivoli", "Paris", "Ile-de-France", "75001", "France");
+            new AddressRequest("12", "Rue de Rivoli", "Paris", "Ile-de-France", "75001", "FR");
 
     @BeforeEach
     void setUp() {
@@ -177,7 +177,7 @@ class CustomerServiceTest {
         Address originalAddress = customer.getAddress();
         when(customerRepository.findById(1L)).thenReturn(Optional.of(customer));
         AddressRequest newAddress =
-                new AddressRequest("5", "Cours Mirabeau", "Aix-en-Provence", "Provence", "13100", "France");
+                new AddressRequest("5", "Cours Mirabeau", "Aix-en-Provence", "Provence", "13100", "FR");
 
         CustomerResponse response = customerService.update(1L,
                 new UpdateCustomerRequest(null, null, null, null, newAddress));

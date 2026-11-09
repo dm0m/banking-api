@@ -82,8 +82,8 @@ src/main/resources/
 
 ## Roadmap
 
-- [ ] Customers: entity, CRUD endpoints, first Flyway migration
-- [ ] Accounts: customer–account relationship, DTOs, validation
+- [x] Customers: entity, CRUD endpoints, first Flyway migration
+- [x] Accounts: customer–account relationship, DTOs, validation
 - [ ] Transfers: atomic transfers, optimistic locking, paginated history
 - [ ] Error handling: consistent JSON errors, Swagger UI
 - [ ] Security: JWT auth, BCrypt, role-based access

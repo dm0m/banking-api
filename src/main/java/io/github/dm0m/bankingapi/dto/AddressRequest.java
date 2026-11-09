@@ -1,5 +1,6 @@
 package io.github.dm0m.bankingapi.dto;
 
+import io.github.dm0m.bankingapi.validation.CountryCode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -26,6 +27,6 @@ public record AddressRequest(
     String zipCode,
 
     @NotBlank
-    @Size(max = 255)
+    @CountryCode
     String country
 ) {}
