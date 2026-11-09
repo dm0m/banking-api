@@ -38,6 +38,13 @@ public class Account extends AuditableEntity {
     @Column(name = "account_status", nullable = false)
     private AccountStatus accountStatus;
 
+    @Version 
+    private Long version;
+
+    public Long getVersion() {
+        return version;
+    }
+
     public String getAccountNumber() {
         return accountNumber;
     }
