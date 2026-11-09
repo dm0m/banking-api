@@ -50,14 +50,11 @@ class CustomerServiceTest {
         return new CreateCustomerRequest("John", "Doe", "+33612345678", email, address, LocalDate.of(1990, 5, 15));
     }
 
-    // a customer as the repository would return it: already saved, so it has an id
     private Customer existingCustomer(Long id, String email) {
         Customer customer = customerMapper.toEntity(createRequest(email));
         ReflectionTestUtils.setField(customer, "id", id);
         return customer;
     }
-
-    // getCustomerById
 
     @Test
     void getCustomerById_existingCustomer_returnsResponse() {
@@ -79,17 +76,13 @@ class CustomerServiceTest {
                 .isInstanceOf(CustomerNotFoundException.class);
     }
 
-    // create
-
     @Test
     void create_newEmail_savesAndReturnsResponse() {
         when(customerRepository.existsByEmail("john@example.com")).thenReturn(false);
-        // save() returns the entity it receives, like the real repository does
         when(customerRepository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         CustomerResponse response = customerService.create(createRequest("john@example.com"));
 
-        // the captor grabs the entity the service passed to save(), so we can inspect it
         ArgumentCaptor<Customer> saved = ArgumentCaptor.forClass(Customer.class);
         verify(customerRepository).save(saved.capture());
         assertThat(saved.getValue().getEmail()).isEqualTo("john@example.com");
@@ -116,8 +109,6 @@ class CustomerServiceTest {
 
         verify(customerRepository).existsByEmail("john@example.com");
     }
-
-    // update
 
     @Test
     void update_onlyNonNullFieldsChange() {

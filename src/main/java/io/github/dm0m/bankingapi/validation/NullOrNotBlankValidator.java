@@ -3,9 +3,6 @@ package io.github.dm0m.bankingapi.validation;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-/**
- * Validates {@link NullOrNotBlank}.
- */
 public class NullOrNotBlankValidator implements ConstraintValidator<NullOrNotBlank, String> {
 
     @Override
