@@ -54,7 +54,7 @@ Spring Boot starts the PostgreSQL container from `compose.yaml` automatically. T
 docker compose up -d
 ```
 
-API docs: Swagger UI at http://localhost:8080/swagger-ui.html, OpenAPI spec at http://localhost:8080/api-docs.
+API docs: Swagger UI at http://localhost:8080/swagger-ui.html, OpenAPI spec at http://localhost:8080/api-docs. They are only served with the `dev` profile, which `./mvnw spring-boot:run` activates; the packaged jar runs without it, so the docs are off in production.
 
 ### 3. Run the tests
 
