@@ -9,39 +9,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-import io.github.dm0m.bankingapi.dto.AddressRequest;
-import io.github.dm0m.bankingapi.dto.CreateCustomerRequest;
-import io.github.dm0m.bankingapi.dto.OpenAccountRequest;
-import io.github.dm0m.bankingapi.model.enums.AccountCurrency;
-import io.github.dm0m.bankingapi.model.enums.AccountType;
+import io.github.dm0m.bankingapi.TestAccounts;
+import io.github.dm0m.bankingapi.TestcontainersConfiguration;
 import io.github.dm0m.bankingapi.service.AccountService;
 import io.github.dm0m.bankingapi.service.CustomerService;
 
 // full stack against a real Postgres: HTTP status codes, JSON shape, real transactions
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
+@Import(TestcontainersConfiguration.class)
 class TransferControllerIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17");
 
     @Autowired
     private MockMvc mockMvc;
@@ -165,16 +153,8 @@ class TransferControllerIntegrationTest {
                 .content("{\"fromAccountId\": %d, \"toAccountId\": %d, \"amount\": %s}".formatted(from, to, amount)));
     }
 
-    // open() starts every account at zero, so the balance is set directly
     private Long createAccountWithBalance(String balance) {
-        AddressRequest address = new AddressRequest("12", "Rue de Rivoli", "Paris", "Ile-de-France", "75001", "FR");
-        Long customerId = customerService.create(new CreateCustomerRequest(
-                "John", "Doe", "+33612345678", UUID.randomUUID() + "@example.com",
-                address, LocalDate.of(1990, 5, 15))).id();
-        Long accountId = accountService.open(customerId,
-                new OpenAccountRequest(AccountType.CHECKING, AccountCurrency.EUR)).id();
-        jdbcTemplate.update("UPDATE accounts SET balance = ? WHERE id = ?", new BigDecimal(balance), accountId);
-        return accountId;
+        return TestAccounts.openWithBalance(customerService, accountService, balance);
     }
 
     private BigDecimal balanceOf(Long accountId) {
