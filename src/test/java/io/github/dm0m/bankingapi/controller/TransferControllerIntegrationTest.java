@@ -2,6 +2,7 @@ package io.github.dm0m.bankingapi.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -65,6 +66,7 @@ class TransferControllerIntegrationTest {
         Long to = createAccountWithBalance("50");
 
         mockMvc.perform(post("/transfers")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"fromAccountId\": %d, \"toAccountId\": %d}".formatted(from, to)))
                 .andExpect(status().isBadRequest());
@@ -101,7 +103,7 @@ class TransferControllerIntegrationTest {
         Long to = createAccountWithBalance("0");
         String location = postTransfer(from, to, "30").andReturn().getResponse().getHeader("Location");
 
-        mockMvc.perform(get(location))
+        mockMvc.perform(get(location).with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.fromAccountId").value(from))
                 .andExpect(jsonPath("$.amount").value(30));
@@ -109,7 +111,7 @@ class TransferControllerIntegrationTest {
 
     @Test
     void getTransferById_unknown_returns404() throws Exception {
-        mockMvc.perform(get("/transfers/999999"))
+        mockMvc.perform(get("/transfers/999999").with(jwt()))
                 .andExpect(status().isNotFound());
     }
 
@@ -121,7 +123,7 @@ class TransferControllerIntegrationTest {
         postTransfer(other, account, "20").andExpect(status().isCreated());
         postTransfer(account, other, "30").andExpect(status().isCreated());
 
-        mockMvc.perform(get("/accounts/{id}/transfers", account).param("size", "2"))
+        mockMvc.perform(get("/accounts/{id}/transfers", account).param("size", "2").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(2))
                 .andExpect(jsonPath("$.content[0].amount").value(30))
@@ -134,7 +136,7 @@ class TransferControllerIntegrationTest {
 
     @Test
     void history_unknownAccount_returns404() throws Exception {
-        mockMvc.perform(get("/accounts/999999/transfers"))
+        mockMvc.perform(get("/accounts/999999/transfers").with(jwt()))
                 .andExpect(status().isNotFound());
     }
 
@@ -142,13 +144,14 @@ class TransferControllerIntegrationTest {
     void history_unknownSortProperty_returns400() throws Exception {
         Long account = createAccountWithBalance("0");
 
-        mockMvc.perform(get("/accounts/{id}/transfers", account).param("sort", "foo"))
+        mockMvc.perform(get("/accounts/{id}/transfers", account).param("sort", "foo").with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("invalid sort property 'foo'"));
     }
 
     private ResultActions postTransfer(Long from, Long to, String amount) throws Exception {
         return mockMvc.perform(post("/transfers")
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fromAccountId\": %d, \"toAccountId\": %d, \"amount\": %s}".formatted(from, to, amount)));
     }
