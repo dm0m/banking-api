@@ -2,6 +2,7 @@ package io.github.dm0m.bankingapi.controller;
 
 import java.net.URI;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -9,11 +10,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.github.dm0m.bankingapi.dto.ActivationCodeResponse;
 import io.github.dm0m.bankingapi.dto.CreateCustomerRequest;
 import io.github.dm0m.bankingapi.dto.CustomerResponse;
 import io.github.dm0m.bankingapi.dto.UpdateCustomerRequest;
+import io.github.dm0m.bankingapi.service.AuthService;
 import io.github.dm0m.bankingapi.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,9 +30,11 @@ import jakarta.validation.Valid;
 public class CustomerController {
 
     private final CustomerService customerService;
+    private final AuthService authService;
 
-    public CustomerController(CustomerService customerService) {
+    public CustomerController(CustomerService customerService, AuthService authService) {
         this.customerService = customerService;
+        this.authService = authService;
     }
     
     @Operation(summary = "Get a customer by id")
@@ -59,5 +65,18 @@ public class CustomerController {
         CustomerResponse created = customerService.create(request);
         URI location = URI.create("/customers/" + created.id());
         return ResponseEntity.created(location).body(created);
+    }
+
+    // TODO step 4: ADMIN only
+    @Operation(summary = "Issue an activation code",
+            description = "Creates the customer's login if needed and returns a new one-time code, "
+                    + "replacing any earlier one. The code is shown only in this response.")
+    @ApiResponse(responseCode = "201", description = "Code issued")
+    @ApiResponse(responseCode = "404", description = "Customer not found")
+    @ApiResponse(responseCode = "409", description = "Customer already has an active login, or its email is used by another login")
+    @PostMapping("/{id}/activation-code")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ActivationCodeResponse issueActivationCode(@PathVariable Long id) {
+        return authService.issueActivationCode(id);
     }
 }

@@ -39,13 +39,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler({InvalidAmountException.class, AccountsNotDistinctException.class})
+    @ExceptionHandler({InvalidAmountException.class, AccountsNotDistinctException.class, InvalidActivationCodeException.class})
     public ProblemDetail handleBadRequest(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    // the request is valid but clashes with the resource's current state
-    @ExceptionHandler({AccountNotClosableException.class, EmailAlreadyExistsException.class, InactiveAccountException.class})
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler({AccountNotClosableException.class, EmailAlreadyExistsException.class, InactiveAccountException.class,
+            AlreadyActivatedException.class})
     public ProblemDetail handleConflictWithCurrentState(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }

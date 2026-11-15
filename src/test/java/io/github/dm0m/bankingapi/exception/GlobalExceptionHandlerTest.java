@@ -145,6 +145,34 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void invalidCredentials_returns401() throws Exception {
+        when(transferService.transfer(any(TransferRequest.class))).thenThrow(new InvalidCredentialsException());
+
+        postTransfer(VALID_TRANSFER)
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value("Invalid email or password"));
+    }
+
+    @Test
+    void invalidActivationCode_returns400() throws Exception {
+        when(transferService.transfer(any(TransferRequest.class))).thenThrow(new InvalidActivationCodeException());
+
+        postTransfer(VALID_TRANSFER)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Invalid or expired activation code"));
+    }
+
+    @Test
+    void alreadyActivated_returns409() throws Exception {
+        when(transferService.transfer(any(TransferRequest.class))).thenThrow(new AlreadyActivatedException(1L));
+
+        postTransfer(VALID_TRANSFER)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Customer 1 already has an active login"));
+    }
+
+    @Test
     void unexpectedError_returns500WithoutLeakingInternals() throws Exception {
         when(transferService.transfer(any(TransferRequest.class)))
                 .thenThrow(new IllegalStateException("ERROR: numeric field overflow at table accounts"));
