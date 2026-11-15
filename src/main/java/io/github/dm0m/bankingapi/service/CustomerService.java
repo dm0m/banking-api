@@ -1,7 +1,5 @@
 package io.github.dm0m.bankingapi.service;
 
-import java.util.Locale;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +12,8 @@ import io.github.dm0m.bankingapi.mapper.AddressMapper;
 import io.github.dm0m.bankingapi.mapper.CustomerMapper;
 import io.github.dm0m.bankingapi.model.Customer;
 import io.github.dm0m.bankingapi.repository.CustomerRepository;
+import io.github.dm0m.bankingapi.repository.UserRepository;
+import io.github.dm0m.bankingapi.util.Emails;
 
 @Service
 public class CustomerService {
@@ -21,12 +21,14 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final CustomerMapper customerMapper;
     private final AddressMapper addressMapper;
+    private final UserRepository userRepository;
 
     public CustomerService(CustomerRepository customerRepository, CustomerMapper customerMapper,
-            AddressMapper addressMapper) {
+            AddressMapper addressMapper, UserRepository userRepository) {
         this.customerRepository = customerRepository;
         this.customerMapper = customerMapper;
         this.addressMapper = addressMapper;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -36,7 +38,7 @@ public class CustomerService {
 
     @Transactional
     public CustomerResponse create(CreateCustomerRequest request) {
-        if (customerRepository.existsByEmail(normalizeEmail(request.email()))) {
+        if (customerRepository.existsByEmail(Emails.normalize(request.email()))) {
             throw new EmailAlreadyExistsException();
         }
         Customer customer = customerRepository.save(customerMapper.toEntity(request));
@@ -50,12 +52,13 @@ public class CustomerService {
         if (request.lastName() != null) customer.setLastName(request.lastName());
         if (request.phone() != null) customer.setPhone(request.phone());
         if (request.email() != null) {
-            String email = normalizeEmail(request.email());
+            String email = Emails.normalize(request.email());
             if (!email.equals(customer.getEmail())) {
-                if (customerRepository.existsByEmail(email)) {
+                if (customerRepository.existsByEmail(email) || userRepository.existsByEmail(email)) {
                     throw new EmailAlreadyExistsException();
                 }
                 customer.setEmail(email);
+                userRepository.findByCustomerId(id).ifPresent(u -> u.setEmail(email));
             }
         }
         if (request.address() != null) {
@@ -72,7 +75,4 @@ public class CustomerService {
                 .orElseThrow(() -> new CustomerNotFoundException(id));
     }
 
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
-    }
 }

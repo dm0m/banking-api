@@ -29,12 +29,15 @@ import io.github.dm0m.bankingapi.mapper.CustomerMapper;
 import io.github.dm0m.bankingapi.model.Address;
 import io.github.dm0m.bankingapi.model.Customer;
 import io.github.dm0m.bankingapi.repository.CustomerRepository;
+import io.github.dm0m.bankingapi.repository.UserRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerServiceTest {
 
     @Mock
     private CustomerRepository customerRepository;
+    @Mock
+    private UserRepository userRepository;
     private final AddressMapper addressMapper = new AddressMapper();
     private final CustomerMapper customerMapper = new CustomerMapper(addressMapper);
     private CustomerService customerService;
@@ -43,7 +46,7 @@ class CustomerServiceTest {
 
     @BeforeEach
     void setUp() {
-        customerService = new CustomerService(customerRepository, customerMapper, addressMapper);
+        customerService = new CustomerService(customerRepository, customerMapper, addressMapper, userRepository);
     }
 
     private CreateCustomerRequest createRequest(String email) {
