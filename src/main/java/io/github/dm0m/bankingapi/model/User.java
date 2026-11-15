@@ -1,9 +1,9 @@
 package io.github.dm0m.bankingapi.model;
 
 import java.time.Instant;
-import java.util.Locale;
 
 import io.github.dm0m.bankingapi.model.enums.Role;
+import io.github.dm0m.bankingapi.util.Emails;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -60,7 +60,7 @@ public class User extends AuditableEntity {
     }
 
     public void setEmail(String email) {
-        this.email = email.trim().toLowerCase(Locale.ROOT);
+        this.email = Emails.normalize(email);
     }
 
     public Role getRole() {

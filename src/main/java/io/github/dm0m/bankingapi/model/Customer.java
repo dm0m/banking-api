@@ -1,10 +1,10 @@
 package io.github.dm0m.bankingapi.model;
 
 import java.time.LocalDate;
-import java.util.Locale;
 
 import org.hibernate.annotations.DynamicUpdate;
 
+import io.github.dm0m.bankingapi.util.Emails;
 import jakarta.persistence.*;
 
 @Entity
@@ -76,7 +76,7 @@ public class Customer extends AuditableEntity {
     }
 
     public void setEmail(String email) {
-        this.email = email.trim().toLowerCase(Locale.ROOT);
+        this.email = Emails.normalize(email);
     }
 
     public void setAddress(Address address) {
