@@ -17,6 +17,8 @@ import io.github.dm0m.bankingapi.dto.ActivationCodeResponse;
 import io.github.dm0m.bankingapi.dto.CreateCustomerRequest;
 import io.github.dm0m.bankingapi.dto.CustomerResponse;
 import io.github.dm0m.bankingapi.dto.UpdateCustomerRequest;
+import io.github.dm0m.bankingapi.security.IsAdmin;
+import io.github.dm0m.bankingapi.security.IsAdminOrCustomer;
 import io.github.dm0m.bankingapi.service.AuthService;
 import io.github.dm0m.bankingapi.service.CustomerService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +41,9 @@ public class CustomerController {
     
     @Operation(summary = "Get a customer by id")
     @ApiResponse(responseCode = "200", description = "Customer found")
+    @ApiResponse(responseCode = "403", description = "Not your customer record")
     @ApiResponse(responseCode = "404", description = "Customer not found")
+    @IsAdminOrCustomer
     @GetMapping("/{id}")
     public CustomerResponse getCustomerById(@PathVariable Long id) {
         return customerService.getCustomerById(id);
@@ -49,8 +53,10 @@ public class CustomerController {
             description = "Only the fields present in the body are changed.")
     @ApiResponse(responseCode = "200", description = "Customer updated")
     @ApiResponse(responseCode = "400", description = "Invalid request body")
+    @ApiResponse(responseCode = "403", description = "Not your customer record")
     @ApiResponse(responseCode = "404", description = "Customer not found")
     @ApiResponse(responseCode = "409", description = "Email already used by another customer")
+    @IsAdminOrCustomer
     @PatchMapping("/{id}")
     public CustomerResponse updateCustomer(@PathVariable Long id, @Valid @RequestBody UpdateCustomerRequest request) {
         return customerService.update(id, request);
@@ -59,7 +65,9 @@ public class CustomerController {
     @Operation(summary = "Create a customer")
     @ApiResponse(responseCode = "201", description = "Customer created; Location header points to it")
     @ApiResponse(responseCode = "400", description = "Invalid request body")
+    @ApiResponse(responseCode = "403", description = "Admins only")
     @ApiResponse(responseCode = "409", description = "Email already used by another customer")
+    @IsAdmin
     @PostMapping
     public ResponseEntity<CustomerResponse> createCustomer(@Valid @RequestBody CreateCustomerRequest request) {
         CustomerResponse created = customerService.create(request);
@@ -67,14 +75,15 @@ public class CustomerController {
         return ResponseEntity.created(location).body(created);
     }
 
-    // TODO step 4: ADMIN only
     @Operation(summary = "Issue an activation code",
             description = "Creates the customer's login if needed and returns a new one-time code, "
                     + "replacing any earlier one. The code is shown only in this response.")
     @ApiResponse(responseCode = "201", description = "Code issued")
+    @ApiResponse(responseCode = "403", description = "Admins only")
     @ApiResponse(responseCode = "404", description = "Customer not found")
     @ApiResponse(responseCode = "409", description = "Customer already has an active login, or its email is used by another login")
     @PostMapping("/{id}/activation-code")
+    @IsAdmin
     @ResponseStatus(HttpStatus.CREATED)
     public ActivationCodeResponse issueActivationCode(@PathVariable Long id) {
         return authService.issueActivationCode(id);

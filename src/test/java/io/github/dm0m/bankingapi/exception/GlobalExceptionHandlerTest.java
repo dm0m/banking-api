@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -185,7 +186,9 @@ class GlobalExceptionHandlerTest {
                 .andExpect(content().string(not(Matchers.containsString("overflow"))));
     }
 
+    // as ADMIN: hasRole short-circuits the ownership check, whose @access bean isn't in this slice
     private ResultActions postTransfer(String body) throws Exception {
-        return mockMvc.perform(post("/transfers").with(jwt()).contentType(MediaType.APPLICATION_JSON).content(body));
+        return mockMvc.perform(post("/transfers").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 }
