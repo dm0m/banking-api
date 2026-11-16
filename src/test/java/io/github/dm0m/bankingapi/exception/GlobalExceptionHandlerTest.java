@@ -68,8 +68,11 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void noToken_returns401() throws Exception {
+        // written by the security filter chain, before this advice is ever reached
         mockMvc.perform(get("/transfers/1"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("authentication required"));
     }
 
     @Test

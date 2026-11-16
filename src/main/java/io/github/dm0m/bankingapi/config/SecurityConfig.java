@@ -23,7 +23,10 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+
+import io.github.dm0m.bankingapi.security.ProblemDetailAuthenticationHandler;
 
 // proxyTargetClass: controllers implement their *Api doc interfaces, and an interface-based proxy
 // would hide @RestController from Spring MVC. Boot already does this, but test slices skip that auto-config.
@@ -32,7 +35,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, ProblemDetailAuthenticationHandler authenticationHandler) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -43,13 +46,24 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui.html").permitAll()
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated())
-            .oauth2ResourceServer(o -> o.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
-
+            .oauth2ResourceServer(o -> o
+                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                .authenticationEntryPoint(authenticationHandler)
+                .accessDeniedHandler(authenticationHandler))
+            .exceptionHandling(e -> e
+                .authenticationEntryPoint(authenticationHandler)
+                .accessDeniedHandler(authenticationHandler));
+                
         return http.build();
     }
 
     @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+    ProblemDetailAuthenticationHandler authenticationHandler(ObjectMapper mapper) {
+        return new ProblemDetailAuthenticationHandler(mapper);
+    }
+
+    @Bean
+    JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
         grantedAuthoritiesConverter.setAuthoritiesClaimName("role");
         grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
