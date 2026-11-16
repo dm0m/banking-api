@@ -25,8 +25,10 @@ import org.springframework.security.web.SecurityFilterChain;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
+// proxyTargetClass: controllers implement their *Api doc interfaces, and an interface-based proxy
+// would hide @RestController from Spring MVC. Boot already does this, but test slices skip that auto-config.
 @Configuration
-@EnableMethodSecurity
+@EnableMethodSecurity(proxyTargetClass = true)
 public class SecurityConfig {
 
     @Bean
