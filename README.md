@@ -153,7 +153,7 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 - [x] Transfers: atomic transfers, optimistic locking, paginated history
 - [x] Error handling: consistent JSON errors, Swagger UI
 - [x] Security: JWT auth, BCrypt, role-based access
-- [ ] Testing: unit tests and Testcontainers integration tests
+- [x] Testing: unit tests and Testcontainers integration tests
 - [ ] Kafka: publish and consume transfer events
 - [ ] Shipping: Dockerfile, full Docker Compose setup, CI with GitHub Actions
 
