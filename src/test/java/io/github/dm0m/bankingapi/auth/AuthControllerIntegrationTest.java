@@ -80,9 +80,11 @@ class AuthControllerIntegrationTest {
     @Test
     void protectedEndpoint_tamperedToken_returns401() throws Exception {
         String token = loginOk(activatedCustomer(), PASSWORD);
-        // flip one character of the signature
-        char last = token.charAt(token.length() - 1);
-        String tampered = token.substring(0, token.length() - 1) + (last == 'A' ? 'B' : 'A');
+        // flip the first character of the signature: all its 6 bits are significant,
+        // unlike the last one, whose low 4 bits are padding the decoder ignores
+        int i = token.lastIndexOf('.') + 1;
+        char c = token.charAt(i);
+        String tampered = token.substring(0, i) + (c == 'A' ? 'B' : 'A') + token.substring(i + 1);
 
         mockMvc.perform(get("/customers/1").header(HttpHeaders.AUTHORIZATION, "Bearer " + tampered))
                 .andExpect(status().isUnauthorized());
