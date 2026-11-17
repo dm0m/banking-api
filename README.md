@@ -112,20 +112,18 @@ Errors use the same ProblemDetail shape as the rest of the API:
 
 ## Project structure
 
+Code is grouped by feature, not by layer: each feature package holds its controller, OpenAPI contract, service, repository, entities, DTOs, mapper and exceptions, so a change to one feature stays in one folder.
+
 ```
 src/main/java/io/github/dm0m/bankingapi/
-├── config/       # Spring configuration (auditing, clock, paging, OpenAPI, security)
-├── controller/   # REST endpoints
-│   └── api/      # Endpoint contracts with their OpenAPI docs, implemented by the controllers
-├── dto/          # Request and response records, with validation
-├── exception/    # Domain exceptions and the global ProblemDetail handler
-├── mapper/       # Entity <-> DTO conversion
-├── model/        # JPA entities and enums
-├── repository/   # Data access (Spring Data JPA)
-├── security/     # Ownership checks, role annotations, 401/403 handler, admin bootstrap
-├── service/      # Business logic and transactions
-├── util/         # Small shared helpers (email normalization)
-└── validation/   # Custom Bean Validation constraints
+├── customer/     # Customer profiles and their address
+├── account/      # Opening, closing and funding accounts; IBAN generation
+├── transfer/     # Atomic transfers and transfer history
+├── auth/         # Logins: activation codes, register, login, first admin
+├── security/     # Filter chain, ownership checks, role annotations, 401/403 handler
+└── common/       # Shared: ProblemDetail error handler, auditing base entity, email helper
+    ├── config/      # Clock, JPA auditing, paging, OpenAPI
+    └── validation/  # Custom Bean Validation constraints
 src/main/resources/
 └── db/migration/ # Flyway SQL migrations
 src/test/java/...  # Same packages: unit tests, plus Testcontainers integration tests

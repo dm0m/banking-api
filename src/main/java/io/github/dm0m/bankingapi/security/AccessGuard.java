@@ -4,8 +4,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
-import io.github.dm0m.bankingapi.repository.AccountRepository;
-import io.github.dm0m.bankingapi.repository.TransferRepository;
+import io.github.dm0m.bankingapi.account.AccountRepository;
+import io.github.dm0m.bankingapi.transfer.TransferRepository;
 
 /**
  * Ownership checks for {@code @PreAuthorize}, e.g. {@code @access.ownsAccount(authentication, #id)}.
