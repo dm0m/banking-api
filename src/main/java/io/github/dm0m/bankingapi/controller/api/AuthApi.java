@@ -5,8 +5,10 @@ import io.github.dm0m.bankingapi.dto.RegisterRequest;
 import io.github.dm0m.bankingapi.dto.TokenResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+@SecurityRequirements()
 @Tag(name = "Auth", description = "Activate a login and get an access token")
 public interface AuthApi {
 

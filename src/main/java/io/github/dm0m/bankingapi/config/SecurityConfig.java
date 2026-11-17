@@ -34,18 +34,24 @@ import io.github.dm0m.bankingapi.security.ProblemDetailAuthenticationHandler;
 @EnableMethodSecurity(proxyTargetClass = true)
 public class SecurityConfig {
 
+    private static final String[] PUBLIC_URLS = {
+        "/auth/**",
+        "/api-docs/**",
+        "/swagger-ui/**",
+        "/swagger-ui.html",
+        "/error"
+    };
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ProblemDetailAuthenticationHandler authenticationHandler) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement((session) -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests((authorize) -> authorize
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/api-docs/**").permitAll()
-                .requestMatchers("/swagger-ui/**").permitAll()
-                .requestMatchers("/swagger-ui.html").permitAll()
-                .requestMatchers("/error").permitAll()
-                .anyRequest().authenticated())
+            .authorizeHttpRequests((req) -> req
+                .requestMatchers(PUBLIC_URLS)
+                .permitAll()
+                .anyRequest()
+                .authenticated())
             .oauth2ResourceServer(o -> o
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 .authenticationEntryPoint(authenticationHandler)
@@ -53,7 +59,7 @@ public class SecurityConfig {
             .exceptionHandling(e -> e
                 .authenticationEntryPoint(authenticationHandler)
                 .accessDeniedHandler(authenticationHandler));
-                
+
         return http.build();
     }
 
