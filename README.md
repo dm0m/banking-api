@@ -84,8 +84,13 @@ Import [`postman/banking-api.postman_collection.json`](postman/banking-api.postm
 ### 5. Run the tests
 
 ```bash
-./mvnw verify
+./mvnw test     # unit tests only: fast, no Docker needed
+./mvnw verify   # unit + integration tests, coverage report and coverage check
 ```
+
+Integration tests are the classes named `*IntegrationTest`: they start the whole app against a PostgreSQL container (Testcontainers), so Docker must be running. Maven Surefire runs the unit tests, Maven Failsafe the integration tests.
+
+`verify` merges coverage from both into one JaCoCo report at `target/site/jacoco/index.html`, and fails if line coverage drops below 95% or branch coverage below 85%.
 
 ## Authentication
 

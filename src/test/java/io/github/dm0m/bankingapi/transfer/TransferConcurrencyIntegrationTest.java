@@ -33,7 +33,7 @@ import io.github.dm0m.bankingapi.customer.CustomerService;
 // Not @Transactional: each thread must run its own transaction, or there is nothing to race.
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-class TransferConcurrencyTest {
+class TransferConcurrencyIntegrationTest {
 
     // below the default Hikari pool size (10), so threads wait on row locks, not on connections
     private static final int THREADS = 8;
