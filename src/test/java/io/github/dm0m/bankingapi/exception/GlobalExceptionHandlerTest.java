@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,14 +18,17 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import io.github.dm0m.bankingapi.config.SecurityConfig;
 import io.github.dm0m.bankingapi.controller.TransferController;
 import io.github.dm0m.bankingapi.dto.TransferRequest;
 import io.github.dm0m.bankingapi.model.Account;
@@ -33,6 +37,7 @@ import io.github.dm0m.bankingapi.service.TransferService;
 // Every failure must come back as a ProblemDetail (application/problem+json), never a stack trace.
 // The web layer only: the service is mocked, so each error can be triggered directly.
 @WebMvcTest(TransferController.class)
+@Import(SecurityConfig.class)
 class GlobalExceptionHandlerTest {
 
     private static final String VALID_TRANSFER = "{\"fromAccountId\": 1, \"toAccountId\": 2, \"amount\": 30}";
@@ -62,29 +67,38 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void noToken_returns401() throws Exception {
+        // written by the security filter chain, before this advice is ever reached
+        mockMvc.perform(get("/transfers/1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.detail").value("authentication required"));
+    }
+
+    @Test
     void pathVariableOfWrongType_returns400() throws Exception {
-        mockMvc.perform(get("/transfers/abc"))
+        mockMvc.perform(get("/transfers/abc").with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
     @Test
     void wrongContentType_returns415() throws Exception {
-        mockMvc.perform(post("/transfers").contentType(MediaType.TEXT_PLAIN).content("hello"))
+        mockMvc.perform(post("/transfers").with(jwt()).contentType(MediaType.TEXT_PLAIN).content("hello"))
                 .andExpect(status().isUnsupportedMediaType())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
     @Test
     void wrongMethod_returns405() throws Exception {
-        mockMvc.perform(delete("/transfers/1"))
+        mockMvc.perform(delete("/transfers/1").with(jwt()))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
     @Test
     void unknownRoute_returns404() throws Exception {
-        mockMvc.perform(get("/no-such-endpoint"))
+        mockMvc.perform(get("/no-such-endpoint").with(jwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON));
     }
@@ -135,6 +149,34 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void invalidCredentials_returns401() throws Exception {
+        when(transferService.transfer(any(TransferRequest.class))).thenThrow(new InvalidCredentialsException());
+
+        postTransfer(VALID_TRANSFER)
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value("Invalid email or password"));
+    }
+
+    @Test
+    void invalidActivationCode_returns400() throws Exception {
+        when(transferService.transfer(any(TransferRequest.class))).thenThrow(new InvalidActivationCodeException());
+
+        postTransfer(VALID_TRANSFER)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Invalid or expired activation code"));
+    }
+
+    @Test
+    void alreadyActivated_returns409() throws Exception {
+        when(transferService.transfer(any(TransferRequest.class))).thenThrow(new AlreadyActivatedException(1L));
+
+        postTransfer(VALID_TRANSFER)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Customer 1 already has an active login"));
+    }
+
+    @Test
     void unexpectedError_returns500WithoutLeakingInternals() throws Exception {
         when(transferService.transfer(any(TransferRequest.class)))
                 .thenThrow(new IllegalStateException("ERROR: numeric field overflow at table accounts"));
@@ -147,7 +189,9 @@ class GlobalExceptionHandlerTest {
                 .andExpect(content().string(not(Matchers.containsString("overflow"))));
     }
 
+    // as ADMIN: hasRole short-circuits the ownership check, whose @access bean isn't in this slice
     private ResultActions postTransfer(String body) throws Exception {
-        return mockMvc.perform(post("/transfers").contentType(MediaType.APPLICATION_JSON).content(body));
+        return mockMvc.perform(post("/transfers").with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                .contentType(MediaType.APPLICATION_JSON).content(body));
     }
 }

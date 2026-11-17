@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -39,13 +40,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler({InvalidAmountException.class, AccountsNotDistinctException.class})
+    @ExceptionHandler({InvalidAmountException.class, AccountsNotDistinctException.class, InvalidActivationCodeException.class})
     public ProblemDetail handleBadRequest(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    // the request is valid but clashes with the resource's current state
-    @ExceptionHandler({AccountNotClosableException.class, EmailAlreadyExistsException.class, InactiveAccountException.class})
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    // @PreAuthorize denials are thrown inside the controller call, so they land here, not in Spring Security;
+    // without this handler the catch-all below would turn them into 500s
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "access denied");
+    }
+
+    @ExceptionHandler({AccountNotClosableException.class, EmailAlreadyExistsException.class, InactiveAccountException.class,
+            AlreadyActivatedException.class})
     public ProblemDetail handleConflictWithCurrentState(RuntimeException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
