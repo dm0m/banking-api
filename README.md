@@ -84,8 +84,13 @@ Import [`postman/banking-api.postman_collection.json`](postman/banking-api.postm
 ### 5. Run the tests
 
 ```bash
-./mvnw verify
+./mvnw test     # unit tests only: fast, no Docker needed
+./mvnw verify   # unit + integration tests, coverage report and coverage check
 ```
+
+Integration tests are the classes named `*IntegrationTest`: they start the whole app against a PostgreSQL container (Testcontainers), so Docker must be running. Maven Surefire runs the unit tests, Maven Failsafe the integration tests.
+
+`verify` merges coverage from both into one JaCoCo report at `target/site/jacoco/index.html`, and fails if line coverage drops below 95% or branch coverage below 85%.
 
 ## Authentication
 
@@ -112,20 +117,18 @@ Errors use the same ProblemDetail shape as the rest of the API:
 
 ## Project structure
 
+Code is grouped by feature, not by layer: each feature package holds its controller, OpenAPI contract, service, repository, entities, DTOs, mapper and exceptions, so a change to one feature stays in one folder.
+
 ```
 src/main/java/io/github/dm0m/bankingapi/
-├── config/       # Spring configuration (auditing, clock, paging, OpenAPI, security)
-├── controller/   # REST endpoints
-│   └── api/      # Endpoint contracts with their OpenAPI docs, implemented by the controllers
-├── dto/          # Request and response records, with validation
-├── exception/    # Domain exceptions and the global ProblemDetail handler
-├── mapper/       # Entity <-> DTO conversion
-├── model/        # JPA entities and enums
-├── repository/   # Data access (Spring Data JPA)
-├── security/     # Ownership checks, role annotations, 401/403 handler, admin bootstrap
-├── service/      # Business logic and transactions
-├── util/         # Small shared helpers (email normalization)
-└── validation/   # Custom Bean Validation constraints
+├── customer/     # Customer profiles and their address
+├── account/      # Opening, closing and funding accounts; IBAN generation
+├── transfer/     # Atomic transfers and transfer history
+├── auth/         # Logins: activation codes, register, login, first admin
+├── security/     # Filter chain, ownership checks, role annotations, 401/403 handler
+└── common/       # Shared: ProblemDetail error handler, auditing base entity, email helper
+    ├── config/      # Clock, JPA auditing, paging, OpenAPI
+    └── validation/  # Custom Bean Validation constraints
 src/main/resources/
 └── db/migration/ # Flyway SQL migrations
 src/test/java/...  # Same packages: unit tests, plus Testcontainers integration tests
@@ -150,7 +153,7 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 - [x] Transfers: atomic transfers, optimistic locking, paginated history
 - [x] Error handling: consistent JSON errors, Swagger UI
 - [x] Security: JWT auth, BCrypt, role-based access
-- [ ] Testing: unit tests and Testcontainers integration tests
+- [x] Testing: unit tests and Testcontainers integration tests
 - [ ] Kafka: publish and consume transfer events
 - [ ] Shipping: Dockerfile, full Docker Compose setup, CI with GitHub Actions
 

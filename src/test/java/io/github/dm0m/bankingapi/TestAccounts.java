@@ -4,14 +4,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import io.github.dm0m.bankingapi.dto.AddressRequest;
-import io.github.dm0m.bankingapi.dto.CreateCustomerRequest;
-import io.github.dm0m.bankingapi.dto.DepositRequest;
-import io.github.dm0m.bankingapi.dto.OpenAccountRequest;
-import io.github.dm0m.bankingapi.model.enums.AccountCurrency;
-import io.github.dm0m.bankingapi.model.enums.AccountType;
-import io.github.dm0m.bankingapi.service.AccountService;
-import io.github.dm0m.bankingapi.service.CustomerService;
+import io.github.dm0m.bankingapi.account.AccountCurrency;
+import io.github.dm0m.bankingapi.account.AccountService;
+import io.github.dm0m.bankingapi.account.AccountType;
+import io.github.dm0m.bankingapi.account.DepositRequest;
+import io.github.dm0m.bankingapi.account.OpenAccountRequest;
+import io.github.dm0m.bankingapi.customer.AddressRequest;
+import io.github.dm0m.bankingapi.customer.CreateCustomerRequest;
+import io.github.dm0m.bankingapi.customer.CustomerService;
 
 // Test data for integration tests, created through the real services.
 public final class TestAccounts {
