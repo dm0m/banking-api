@@ -189,7 +189,7 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 - [x] Security: JWT auth, BCrypt, role-based access
 - [x] Testing: unit tests and Testcontainers integration tests
 - [x] Kafka: publish and consume transfer events
-- [ ] Shipping: Dockerfile, full Docker Compose setup, CI with GitHub Actions
+- [x] Shipping: Dockerfile, full Docker Compose setup, CI with GitHub Actions
 
 ### Known gaps
 
