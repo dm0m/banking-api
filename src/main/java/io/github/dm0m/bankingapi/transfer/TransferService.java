@@ -1,7 +1,9 @@
 package io.github.dm0m.bankingapi.transfer;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,7 @@ import io.github.dm0m.bankingapi.account.AccountRepository;
 import io.github.dm0m.bankingapi.account.AccountStatus;
 import io.github.dm0m.bankingapi.account.InactiveAccountException;
 import io.github.dm0m.bankingapi.account.InvalidAmountException;
+import io.github.dm0m.bankingapi.outbox.OutboxWriter;
 
 @Service
 public class TransferService {
@@ -20,11 +23,20 @@ public class TransferService {
     private final AccountRepository accountRepository;
     private final TransferMapper transferMapper;
     private final TransferRepository transferRepository;
+    private final OutboxWriter outboxWriter;
+    private final String transferCompletedTopic;
 
-    public TransferService(AccountRepository accountRepository, TransferMapper transferMapper, TransferRepository transferRepository) {
-        this.accountRepository = accountRepository;
-        this.transferMapper = transferMapper;
-        this.transferRepository = transferRepository;
+    public TransferService(
+        AccountRepository accountRepository,
+        TransferMapper transferMapper,
+        TransferRepository transferRepository,
+        OutboxWriter outboxWriter,
+        @Value("${app.kafka.topics.transfer-completed}") String transferCompletedTopic) {
+            this.accountRepository = accountRepository;
+            this.transferMapper = transferMapper;
+            this.transferRepository = transferRepository;
+            this.outboxWriter = outboxWriter;
+            this.transferCompletedTopic = transferCompletedTopic;
     }
 
     private record LockedAccounts(Account from, Account to) {}
@@ -43,7 +55,17 @@ public class TransferService {
         validateTransfer(fromAccount, toAccount, amount);
         fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
         toAccount.setBalance(toAccount.getBalance().add(amount));
-        return transferMapper.toResponse(transferRepository.save(transferMapper.toEntity(request, fromAccount, toAccount)));
+        Transfer newTransfer = transferRepository.save(transferMapper.toEntity(request, fromAccount, toAccount));
+        TransferCompletedEvent event = new TransferCompletedEvent(
+            UUID.randomUUID(),
+            newTransfer.getId(),
+            from,
+            to,
+            newTransfer.getAmount().toPlainString(),
+            fromAccount.getCurrency(),
+            newTransfer.getCreatedAt().toString());
+        outboxWriter.append(transferCompletedTopic, newTransfer.getId().toString(), event.eventId(), event);
+        return transferMapper.toResponse(newTransfer);
     }
     
     @Transactional(readOnly = true)

@@ -45,17 +45,19 @@ cp .env.example .env
 | `DB_USER`, `DB_PASSWORD` | Database login, also used by `compose.yaml` to create it | Yes |
 | `JWT_SECRET` | Key that signs access tokens (HS256): at least 32 bytes, e.g. `openssl rand -base64 48` | Yes, except with the `dev` profile, which sets its own |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First admin login, created at startup if no admin exists yet. Password: 12–72 characters | No: leave both empty to skip. Setting only one stops startup |
+| `KAFKA_PORT` | Host port of the Kafka broker | No (defaults to 9092) |
 
 `.env` is git-ignored: never commit real values.
 
 ### 2. Run the app
 
 ```bash
-set -a; source .env; set +a   # Spring Boot doesn't read .env (Docker Compose does), so export it first
 ./mvnw spring-boot:run
 ```
 
-Spring Boot starts the PostgreSQL container from `compose.yaml` automatically. To run the database on its own:
+The app reads `.env` from the directory you start it in, so run it from the project root.
+
+Spring Boot starts the PostgreSQL and Kafka containers from `compose.yaml` automatically. To run them on their own:
 
 ```bash
 docker compose up -d
@@ -88,7 +90,7 @@ Import [`postman/banking-api.postman_collection.json`](postman/banking-api.postm
 ./mvnw verify   # unit + integration tests, coverage report and coverage check
 ```
 
-Integration tests are the classes named `*IntegrationTest`: they start the whole app against a PostgreSQL container (Testcontainers), so Docker must be running. Maven Surefire runs the unit tests, Maven Failsafe the integration tests.
+Integration tests are the classes named `*IntegrationTest`: they start the whole app against PostgreSQL and Kafka containers (Testcontainers), so Docker must be running. Maven Surefire runs the unit tests, Maven Failsafe the integration tests.
 
 `verify` merges coverage from both into one JaCoCo report at `target/site/jacoco/index.html`, and fails if line coverage drops below 95% or branch coverage below 85%.
 
@@ -115,6 +117,24 @@ Errors use the same ProblemDetail shape as the rest of the API:
 | 401 | Malformed, expired or wrongly signed token | `Bearer error="invalid_token", ...` |
 | 403 | Valid token, but not their data or an admin-only action | none |
 
+## Events
+
+Each committed transfer publishes one JSON message to the `transfer.completed` topic, keyed by transfer id, through the outbox (see [Design decisions](#design-decisions)):
+
+```json
+{"eventId": "6f1c…", "transferId": 42, "fromAccountId": 1, "toAccountId": 2,
+ "amount": "30.5000", "currency": "EUR", "occurredAt": "2026-11-18T10:00:00Z"}
+```
+
+The `audit` package consumes it and writes one row per event to `transfer_audit_logs`, along with the message's Kafka topic, partition and offset. Messages it can't process end up in `transfer.completed-dlt`.
+
+To watch the events while the app runs:
+
+```bash
+docker compose exec broker /opt/kafka/bin/kafka-console-consumer.sh \
+  --bootstrap-server localhost:9092 --topic transfer.completed --from-beginning
+```
+
 ## Project structure
 
 Code is grouped by feature, not by layer: each feature package holds its controller, OpenAPI contract, service, repository, entities, DTOs, mapper and exceptions, so a change to one feature stays in one folder.
@@ -123,7 +143,9 @@ Code is grouped by feature, not by layer: each feature package holds its control
 src/main/java/io/github/dm0m/bankingapi/
 ├── customer/     # Customer profiles and their address
 ├── account/      # Opening, closing and funding accounts; IBAN generation
-├── transfer/     # Atomic transfers and transfer history
+├── transfer/     # Atomic transfers, transfer history, the TransferCompleted event
+├── audit/        # Kafka consumer that writes an audit log of transfers
+├── outbox/       # Transactional outbox: event table, writer, scheduled publisher, cleanup
 ├── auth/         # Logins: activation codes, register, login, first admin
 ├── security/     # Filter chain, ownership checks, role annotations, 401/403 handler
 └── common/       # Shared: ProblemDetail error handler, auditing base entity, email helper
@@ -144,7 +166,10 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 - **Passwords and activation codes hashed with BCrypt**: a database leak exposes neither. Login compares against a dummy hash when the email is unknown, so response times don't reveal which emails exist, and every login failure returns the same message.
 - **Ownership checked before the controller runs**: `@PreAuthorize` rules such as `@IsAdminOrAccountOwner` keep the access rules next to each endpoint. A `USER` asking for an id that doesn't exist gets 403, not 404, so they can't probe which ids exist.
 - **Activation codes instead of open sign-up**: only someone the bank gave a code to can create a login for a customer.
-- **Kafka events** (planned, Week 7): a `TransferCompleted` event lets other services (audit, notifications) react to transfers without coupling them to the transfer code.
+- **Kafka events through a transactional outbox**: every transfer publishes a `TransferCompleted` event, so other services (audit, notifications) react to transfers without the transfer code knowing about them. The event isn't sent to Kafka directly: it is saved to the `outbox_events` table in the same transaction as the transfer, so the two commit or roll back together. A scheduled publisher then claims a batch of unsent events in a short transaction (`SKIP LOCKED`, so several app instances never claim the same rows), sends the whole batch with no transaction open, and marks each event sent once Kafka confirms it. A slow Kafka never holds a database connection or row lock. A claim lasts 60 seconds, well over the 15-second send timeout; if an instance crashes before marking an event sent, another one sends it again once the claim expires. So delivery is at least once, and an instance whose claim ran out never overwrites the claim or the result of the instance that took over: a `version` column (optimistic locking) shows it the event was claimed again. Kafka being down never fails or slows a transfer: events wait in the table until it is back. Sent events are deleted after 7 days.
+- **Idempotent consumer**: Kafka delivers at least once, so the audit consumer can see the same event twice. Each event carries a unique `eventId`, and a `UNIQUE` constraint on it turns a second delivery into a no-op.
+- **Dead-letter topic instead of silent loss**: a message that fails is retried twice, then moved to `transfer.completed-dlt`. A message that breaks the JSON contract goes there straight away, since retrying can't fix it.
+- **Strings for amount and time on the wire**: the event sends `amount` as a plain decimal string and `occurredAt` as ISO-8601 UTC, so no consumer reads money into a floating-point number or has to guess a timestamp format.
 
 ## Roadmap
 
@@ -154,7 +179,7 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 - [x] Error handling: consistent JSON errors, Swagger UI
 - [x] Security: JWT auth, BCrypt, role-based access
 - [x] Testing: unit tests and Testcontainers integration tests
-- [ ] Kafka: publish and consume transfer events
+- [x] Kafka: publish and consume transfer events
 - [ ] Shipping: Dockerfile, full Docker Compose setup, CI with GitHub Actions
 
 ### Known gaps
@@ -163,4 +188,9 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 - No rate limiting or lockout on login, so passwords can be brute-forced.
 - Activation codes are returned to the admin, who passes them on by hand. There's no email delivery.
 - No password change or reset, and no way to create more admins than the first one.
+- Events reach Kafka up to one poll interval (500 ms) after the transfer, not instantly.
+- Events claimed by an instance that crashed wait for the claim to expire (60 seconds) before another instance sends them.
+- An event that Kafka keeps rejecting (for example, larger than the broker allows) is retried on every poll forever. Its `attempts` and `last_error` columns show why; there's no dead-letter table or automatic skip yet.
+- No backoff when Kafka is down: the publisher retries unsent events every poll (500 ms), each try waiting up to the send timeout, logging a warning and blocking the shared scheduler thread. TODO: retry with exponential backoff based on `attempts` and `last_attempt_at`.
+- Events can reach Kafka out of outbox order: a failed event is retried after later events of its batch were sent, and each app instance sends its own batches. Outbox ids don't strictly follow commit order either. Each transfer has its own key, so no consumer relies on the order today.
 - HS256 uses one shared secret. Several services verifying tokens would need RS256 with a public key.
