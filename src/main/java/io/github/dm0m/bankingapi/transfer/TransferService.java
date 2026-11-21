@@ -2,6 +2,7 @@ package io.github.dm0m.bankingapi.transfer;
 
 import java.math.BigDecimal;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import io.github.dm0m.bankingapi.account.AccountRepository;
 import io.github.dm0m.bankingapi.account.AccountStatus;
 import io.github.dm0m.bankingapi.account.InactiveAccountException;
 import io.github.dm0m.bankingapi.account.InvalidAmountException;
+import io.github.dm0m.bankingapi.outbox.OutboxWriter;
 
 @Service
 public class TransferService {
@@ -20,30 +22,35 @@ public class TransferService {
     private final AccountRepository accountRepository;
     private final TransferMapper transferMapper;
     private final TransferRepository transferRepository;
+    private final OutboxWriter outboxWriter;
+    private final String transferCompletedTopic;
 
-    public TransferService(AccountRepository accountRepository, TransferMapper transferMapper, TransferRepository transferRepository) {
+    public TransferService(
+        AccountRepository accountRepository,
+        TransferMapper transferMapper,
+        TransferRepository transferRepository,
+        OutboxWriter outboxWriter,
+        @Value("${app.kafka.topics.transfer-completed}") String transferCompletedTopic) {
         this.accountRepository = accountRepository;
         this.transferMapper = transferMapper;
         this.transferRepository = transferRepository;
+        this.outboxWriter = outboxWriter;
+        this.transferCompletedTopic = transferCompletedTopic;
     }
 
     private record LockedAccounts(Account from, Account to) {}
 
     @Transactional
     public TransferResponse transfer(TransferRequest request) {
+        validateRequest(request);
         BigDecimal amount = request.amount();
-        if (amount.signum() <= 0) throw new InvalidAmountException(); 
-        Long from = request.fromAccountId();
-        Long to = request.toAccountId();
-        if (from.equals(to)) throw new AccountsNotDistinctException();
-        LockedAccounts accounts = lockInIdOrder(from, to);
-        // locked accounts are managed: the new balances are written at commit, no save() needed
-        Account fromAccount = accounts.from();
-        Account toAccount = accounts.to();
-        validateTransfer(fromAccount, toAccount, amount);
-        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-        toAccount.setBalance(toAccount.getBalance().add(amount));
-        return transferMapper.toResponse(transferRepository.save(transferMapper.toEntity(request, fromAccount, toAccount)));
+        LockedAccounts accounts = lockInIdOrder(request.fromAccountId(), request.toAccountId());
+        validateTransfer(accounts.from(), accounts.to(), amount);
+        accounts.from().withdraw(amount);
+        accounts.to().deposit(amount);
+        Transfer transfer = transferRepository.save(transferMapper.toEntity(request, accounts.from(), accounts.to()));
+        publishTransferCompleted(transfer);
+        return transferMapper.toResponse(transfer);
     }
     
     @Transactional(readOnly = true)
@@ -73,10 +80,20 @@ public class TransferService {
         return new LockedAccounts(fromAccount, toAccount);
     }
 
+    private void validateRequest(TransferRequest request) {
+        if (request.amount().signum() <= 0) throw new InvalidAmountException();
+        if (request.fromAccountId().equals(request.toAccountId())) throw new AccountsNotDistinctException();
+    }
+
     private void validateTransfer(Account fromAccount, Account toAccount, BigDecimal amount) {
         if (fromAccount.getAccountStatus() != AccountStatus.ACTIVE) throw new InactiveAccountException(fromAccount.getId());
         if (toAccount.getAccountStatus() != AccountStatus.ACTIVE) throw new InactiveAccountException(toAccount.getId());
         if (fromAccount.getCurrency() != toAccount.getCurrency()) throw new CurrencyMismatchException();
         if (fromAccount.getBalance().compareTo(amount) < 0) throw new InsufficientFundsException(fromAccount.getId());
-    }    
+    }
+
+    private void publishTransferCompleted(Transfer transfer) {
+        TransferCompletedEvent event = TransferCompletedEvent.of(transfer);
+        outboxWriter.append(transferCompletedTopic, transfer.getId().toString(), event.eventId(), event);
+    }
 }

@@ -3,15 +3,20 @@ package io.github.dm0m.bankingapi.transfer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,19 +38,25 @@ import io.github.dm0m.bankingapi.account.AccountRepository;
 import io.github.dm0m.bankingapi.account.AccountStatus;
 import io.github.dm0m.bankingapi.account.InactiveAccountException;
 import io.github.dm0m.bankingapi.account.InvalidAmountException;
+import io.github.dm0m.bankingapi.outbox.OutboxWriter;
 
 @ExtendWith(MockitoExtension.class)
 class TransferServiceTest {
+
+    private static final String TOPIC = "transfer.completed";
 
     @Mock
     private AccountRepository accountRepository;
     @Mock
     private TransferRepository transferRepository;
     private TransferService transferService;
+    
+    @Mock
+    private OutboxWriter outboxWriter;
 
     @BeforeEach
     void setUp() {
-        transferService = new TransferService(accountRepository, new TransferMapper(), transferRepository);
+        transferService = new TransferService(accountRepository, new TransferMapper(), transferRepository, outboxWriter, TOPIC);
     }
 
     private Account existingAccount(Long id, String balance) {
@@ -63,8 +74,15 @@ class TransferServiceTest {
         }
     }
 
+    // the id (sequence) and createdAt (JPA auditing) are set on save; the outbox event needs both
     private void saveReturnsArgument() {
-        when(transferRepository.save(any(Transfer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        AtomicLong ids = new AtomicLong(41); // first saved transfer gets id 42
+        when(transferRepository.save(any(Transfer.class))).thenAnswer(invocation -> {
+            Transfer transfer = invocation.getArgument(0);
+            ReflectionTestUtils.setField(transfer, "id", ids.incrementAndGet());
+            ReflectionTestUtils.setField(transfer, "createdAt", Instant.parse("2026-11-18T10:00:00Z"));
+            return transfer;
+        });
     }
 
     private TransferRequest request(Long from, Long to, String amount) {
@@ -90,6 +108,42 @@ class TransferServiceTest {
         assertThat(response.toAccountId()).isEqualTo(2L);
         assertThat(response.amount()).isEqualByComparingTo("30");
         assertThat(response.currency()).isEqualTo(AccountCurrency.EUR);
+    }
+
+    @Test
+    void transfer_writesOneTransferCompletedEventToTheOutbox() {
+        Account from = existingAccount(2L, "100.0000");
+        Account to = existingAccount(1L, "50.0000");
+        lockReturns(from, to);
+        saveReturnsArgument();
+
+        transferService.transfer(new TransferRequest(2L, 1L, new BigDecimal("3E+1")));
+
+        ArgumentCaptor<UUID> eventId = ArgumentCaptor.forClass(UUID.class);
+        ArgumentCaptor<Object> written = ArgumentCaptor.forClass(Object.class);
+        // keyed by transfer id, on the configured topic
+        verify(outboxWriter).append(eq(TOPIC), eq("42"), eventId.capture(), written.capture());
+        assertThat(written.getValue()).isInstanceOfSatisfying(TransferCompletedEvent.class, event -> {
+            assertThat(event.eventId()).isNotNull().isEqualTo(eventId.getValue());
+            assertThat(event.transferId()).isEqualTo(42L);
+            assertThat(event.fromAccountId()).isEqualTo(2L);
+            assertThat(event.toAccountId()).isEqualTo(1L);
+            // the stored scale, not the request's notation
+            assertThat(event.amount()).isEqualTo("30.0000");
+            assertThat(event.currency()).isEqualTo(AccountCurrency.EUR);
+            assertThat(event.occurredAt()).isEqualTo("2026-11-18T10:00:00Z");
+        });
+    }
+
+    @Test
+    void transfer_eachTransferGetsItsOwnEventId() {
+        lockReturns(existingAccount(1L, "100.0000"), existingAccount(2L, "100.0000"));
+        saveReturnsArgument();
+        transferService.transfer(request(1L, 2L, "10"));
+        transferService.transfer(request(1L, 2L, "10"));
+        ArgumentCaptor<UUID> eventIds = ArgumentCaptor.forClass(UUID.class);
+        verify(outboxWriter, times(2)).append(eq(TOPIC), any(), eventIds.capture(), any());
+        assertThat(eventIds.getAllValues()).doesNotHaveDuplicates();
     }
 
     @Test
@@ -132,21 +186,21 @@ class TransferServiceTest {
     void transfer_zeroAmount_isRejected() {
         assertThatThrownBy(() -> transferService.transfer(request(1L, 2L, "0")))
                 .isInstanceOf(InvalidAmountException.class);
-        verifyNoInteractions(accountRepository, transferRepository);
+        verifyNoInteractions(accountRepository, transferRepository, outboxWriter);
     }
 
     @Test
     void transfer_negativeAmount_isRejected() {
         assertThatThrownBy(() -> transferService.transfer(request(1L, 2L, "-10")))
                 .isInstanceOf(InvalidAmountException.class);
-        verifyNoInteractions(accountRepository, transferRepository);
+        verifyNoInteractions(accountRepository, transferRepository, outboxWriter);
     }
 
     @Test
     void transfer_sameAccount_isRejected() {
         assertThatThrownBy(() -> transferService.transfer(request(1L, 1L, "10")))
                 .isInstanceOf(AccountsNotDistinctException.class);
-        verifyNoInteractions(accountRepository, transferRepository);
+        verifyNoInteractions(accountRepository, transferRepository, outboxWriter);
     }
 
     @Test
@@ -157,6 +211,7 @@ class TransferServiceTest {
                 .isInstanceOf(AccountNotFoundException.class)
                 .hasMessageContaining("1");
         verify(transferRepository, never()).save(any());
+        verifyNoInteractions(outboxWriter);
     }
 
     @Test
@@ -167,6 +222,7 @@ class TransferServiceTest {
                 .isInstanceOf(AccountNotFoundException.class)
                 .hasMessageContaining("2");
         verify(transferRepository, never()).save(any());
+        verifyNoInteractions(outboxWriter);
     }
 
     @Test
@@ -226,6 +282,7 @@ class TransferServiceTest {
         assertThat(from.getBalance()).isEqualByComparingTo(fromBalance);
         assertThat(to.getBalance()).isEqualByComparingTo(toBalance);
         verify(transferRepository, never()).save(any());
+        verifyNoInteractions(outboxWriter);
     }
 
     private Transfer savedTransfer(Long id, Account from, Account to, String amount) {
