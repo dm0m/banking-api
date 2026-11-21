@@ -11,4 +11,16 @@ public record TransferCompletedEvent(
     Long toAccountId,
     String amount,
     AccountCurrency currency,
-    String occurredAt) {}
+    String occurredAt) {
+
+    static TransferCompletedEvent of(Transfer transfer) {
+        return new TransferCompletedEvent(
+            UUID.randomUUID(),
+            transfer.getId(),
+            transfer.getFromAccount().getId(),
+            transfer.getToAccount().getId(),
+            transfer.getAmount().toPlainString(),
+            transfer.getFromAccount().getCurrency(),
+            transfer.getCreatedAt().toString());
+    }
+}

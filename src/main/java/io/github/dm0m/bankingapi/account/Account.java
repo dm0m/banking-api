@@ -76,6 +76,14 @@ public class Account extends AuditableEntity {
         this.balance = balance;
     }
 
+    public void deposit(BigDecimal amount) {
+        this.balance = this.balance.add(amount);
+    }
+
+    public void withdraw(BigDecimal amount) {
+        this.balance = this.balance.subtract(amount);
+    }
+
     public AccountCurrency getCurrency() {
         return currency;
     }

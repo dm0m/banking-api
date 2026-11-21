@@ -78,7 +78,7 @@ public class AccountService {
         // lock row: a concurrent transfer or deposit on this account waits instead of losing this update
         Account account = findAccountForUpdate(id);
         if (account.getAccountStatus() != AccountStatus.ACTIVE) throw new InactiveAccountException(id);
-        account.setBalance(account.getBalance().add(amount));
+        account.deposit(amount);
         accountRepository.flush();
         return accountMapper.toResponse(account);
     }
