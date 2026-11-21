@@ -46,6 +46,7 @@ cp .env.example .env
 | `JWT_SECRET` | Key that signs access tokens (HS256): at least 32 bytes, e.g. `openssl rand -base64 48` | Yes, except with the `dev` profile, which sets its own |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First admin login, created at startup if no admin exists yet. Password: 12–72 characters | No: leave both empty to skip. Setting only one stops startup |
 | `KAFKA_PORT` | Host port of the Kafka broker | No (defaults to 9092) |
+| `APP_PORT` | Host port of the app when it runs in Docker (`--profile backend`) | No (defaults to 8080) |
 
 `.env` is git-ignored: never commit real values.
 
@@ -62,6 +63,14 @@ Spring Boot starts the PostgreSQL and Kafka containers from `compose.yaml` autom
 ```bash
 docker compose up -d
 ```
+
+To run the app in Docker as well, built from the `Dockerfile`:
+
+```bash
+docker compose --profile backend up --build
+```
+
+The `backend` service reads `.env` too, but reaches PostgreSQL and Kafka by their service names, so `DB_HOST` and the Kafka address in `.env` are overridden. It runs without the `dev` profile.
 
 API docs: Swagger UI at http://localhost:8080/swagger-ui.html, OpenAPI spec at http://localhost:8080/api-docs. They are only served with the `dev` profile, which `./mvnw spring-boot:run` activates; the packaged jar runs without it, so the docs are off in production.
 
