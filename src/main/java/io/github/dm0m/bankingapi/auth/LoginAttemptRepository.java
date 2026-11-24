@@ -31,4 +31,12 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, Stri
     @Modifying
     @Query("DELETE FROM LoginAttempt a WHERE a.email = :email")
     void deleteByEmail(@Param("email") String email);
+
+    // a row can still hold a running lock after its window is over: keep it until both are done
+    @Modifying
+    @Query("""
+            DELETE FROM LoginAttempt a
+            WHERE a.windowStartedAt <= :cutoff AND (a.lockedUntil IS NULL OR a.lockedUntil <= :now)
+            """)
+    int deleteExpired(@Param("cutoff") Instant cutoff, @Param("now") Instant now);
 }

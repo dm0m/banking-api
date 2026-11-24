@@ -68,6 +68,8 @@ class LoginLockoutIntegrationTest {
     @Autowired
     private LoginAttemptService loginAttemptService;
     @Autowired
+    private LoginAttemptCleanup loginAttemptCleanup;
+    @Autowired
     private LoginAttemptRepository loginAttemptRepository;
     @Autowired
     private MutableClock clock;
@@ -188,6 +190,24 @@ class LoginLockoutIntegrationTest {
         LoginAttempt attempt = loginAttemptRepository.findById(email).orElseThrow();
         assertThat(attempt.getFailedCount()).isEqualTo(threads);
         assertThat(attempt.getLockedUntil()).isEqualTo(clock.instant().plus(LOCKOUT));
+    }
+
+    @Test
+    void cleanup_deletesARowOnlyOnceItsWindowAndLockAreOver() throws Exception {
+        String unlocked = uniqueEmail();
+        String locked = uniqueEmail();
+        failLogin(unlocked, 1);
+        failLogin(locked, MAX_FAILURES);
+        clock.advance(WINDOW.minusSeconds(1));
+        loginAttemptCleanup.deleteExpiredAttempts();
+        assertThat(loginAttemptRepository.existsById(unlocked)).isTrue();
+        clock.advance(Duration.ofSeconds(1));
+        loginAttemptCleanup.deleteExpiredAttempts();
+        assertThat(loginAttemptRepository.existsById(unlocked)).isFalse();
+        assertThat(loginAttemptRepository.existsById(locked)).isTrue();
+        clock.advance(LOCKOUT.minus(WINDOW));
+        loginAttemptCleanup.deleteExpiredAttempts();
+        assertThat(loginAttemptRepository.existsById(locked)).isFalse();
     }
 
     @Test
