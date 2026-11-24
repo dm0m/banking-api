@@ -27,6 +27,11 @@ jobs:
 
       - run: ./mvnw -B verify
 
+      - name: Coverage summary
+        # runs when the coverage check fails too; unit test failures stop the build before there is a report
+        if: ${{ !cancelled() && hashFiles('target/site/jacoco/jacoco.csv') != '' }}
+        run: .github/scripts/coverage-summary.sh >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
