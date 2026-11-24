@@ -125,6 +125,9 @@ Errors use the same ProblemDetail shape as the rest of the API:
 | 401 | No token | `Bearer` |
 | 401 | Malformed, expired or wrongly signed token | `Bearer error="invalid_token", ...` |
 | 403 | Valid token, but not their data or an admin-only action | none |
+| 429 | Login locked after too many failures; `Retry-After` gives the wait in seconds | none |
+
+Five failed logins for an email within 15 minutes lock it for 15 minutes, even for the right password. A successful login resets the count. Each limit is a property: `app.login.max-failures`, `app.login.failure-window` and `app.login.lockout`. Keep the lockout at least as long as the window, or the first failure after a lock can lock the email again.
 
 ## Events
 
@@ -155,7 +158,7 @@ src/main/java/io/github/dm0m/bankingapi/
 ├── transfer/     # Atomic transfers, transfer history, the TransferCompleted event
 ├── audit/        # Kafka consumer that writes an audit log of transfers
 ├── outbox/       # Transactional outbox: event table, writer, scheduled publisher, cleanup
-├── auth/         # Logins: activation codes, register, login, first admin
+├── auth/         # Logins: activation codes, register, login and lockout, first admin
 ├── security/     # Filter chain, ownership checks, role annotations, 401/403 handler
 └── common/       # Shared: ProblemDetail error handler, auditing base entity, email helper
     ├── config/      # Clock, JPA auditing, paging, OpenAPI
@@ -173,6 +176,7 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 - **DTOs separate from entities**: the API contract stays stable when the database model changes, and internal fields are never exposed by accident.
 - **Stateless JWT instead of sessions**: the server keeps no login state, so any instance can check a token on its own. The price is that a token can't be revoked, so it only lives 15 minutes.
 - **Passwords and activation codes hashed with BCrypt**: a database leak exposes neither. Login compares against a dummy hash when the email is unknown, so response times don't reveal which emails exist, and every login failure returns the same message.
+- **Login lockout counted in PostgreSQL, per email**: every app instance sees the same count, and a single `INSERT ... ON CONFLICT` adds each failure, so parallel attempts can't overwrite each other. Emails with no login are counted too; otherwise a 429 would reveal which emails exist. Locks always end on their own, so nobody is locked out for good. A scheduled job deletes rows once their window and lock are over.
 - **Ownership checked before the controller runs**: `@PreAuthorize` rules such as `@IsAdminOrAccountOwner` keep the access rules next to each endpoint. A `USER` asking for an id that doesn't exist gets 403, not 404, so they can't probe which ids exist.
 - **Activation codes instead of open sign-up**: only someone the bank gave a code to can create a login for a customer.
 - **Kafka events through a transactional outbox**: every transfer publishes a `TransferCompleted` event, so other services (audit, notifications) react to transfers without the transfer code knowing about them. The event isn't sent to Kafka directly: it is saved to the `outbox_events` table in the same transaction as the transfer, so the two commit or roll back together. A scheduled publisher then claims a batch of unsent events in a short transaction (`SKIP LOCKED`, so several app instances never claim the same rows), sends the whole batch with no transaction open, and marks each event sent once Kafka confirms it. A slow Kafka never holds a database connection or row lock. A claim lasts 60 seconds, well over the 15-second send timeout; if an instance crashes before marking an event sent, another one sends it again once the claim expires. So delivery is at least once, and an instance whose claim ran out never overwrites the claim or the result of the instance that took over: a `version` column (optimistic locking) shows it the event was claimed again. Kafka being down never fails or slows a transfer: events wait in the table until it is back. Sent events are deleted after 7 days.
@@ -194,7 +198,8 @@ src/test/java/...  # Same packages: unit tests, plus Testcontainers integration 
 ### Known gaps
 
 - No refresh tokens or logout: a token stays valid until it expires (15 minutes).
-- No rate limiting or lockout on login, so passwords can be brute-forced.
+- Login lockout is per email only, with no limit per IP address: anyone who knows an email can keep it locked by sending wrong passwords, and one client can try a few passwords on each of many emails.
+- Login requests that arrive in parallel can all pass the lock check before the fifth failure is saved, so a burst can get a few extra guesses. They are all counted.
 - Activation codes are returned to the admin, who passes them on by hand. There's no email delivery.
 - No password change or reset, and no way to create more admins than the first one.
 - Events reach Kafka up to one poll interval (500 ms) after the transfer, not instantly.
