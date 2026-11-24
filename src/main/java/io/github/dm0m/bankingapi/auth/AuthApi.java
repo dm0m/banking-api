@@ -19,5 +19,6 @@ public interface AuthApi {
     @ApiResponse(responseCode = "200", description = "Logged in")
     @ApiResponse(responseCode = "400", description = "Invalid request body")
     @ApiResponse(responseCode = "401", description = "Invalid email or password")
+    @ApiResponse(responseCode = "429", description = "Too many failed attempts; retry after the Retry-After delay (seconds)")
     TokenResponse login(LoginRequest request);
 }

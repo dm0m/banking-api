@@ -32,6 +32,7 @@ import io.github.dm0m.bankingapi.account.Account;
 import io.github.dm0m.bankingapi.auth.AlreadyActivatedException;
 import io.github.dm0m.bankingapi.auth.InvalidActivationCodeException;
 import io.github.dm0m.bankingapi.auth.InvalidCredentialsException;
+import io.github.dm0m.bankingapi.common.config.ClockConfig;
 import io.github.dm0m.bankingapi.security.SecurityConfig;
 import io.github.dm0m.bankingapi.transfer.TransferController;
 import io.github.dm0m.bankingapi.transfer.TransferRequest;
@@ -40,7 +41,7 @@ import io.github.dm0m.bankingapi.transfer.TransferService;
 // Every failure must come back as a ProblemDetail (application/problem+json), never a stack trace.
 // The web layer only: the service is mocked, so each error can be triggered directly.
 @WebMvcTest(TransferController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, ClockConfig.class})
 class GlobalExceptionHandlerTest {
 
     private static final String VALID_TRANSFER = "{\"fromAccountId\": 1, \"toAccountId\": 2, \"amount\": 30}";

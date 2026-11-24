@@ -2,6 +2,7 @@ package io.github.dm0m.bankingapi.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
@@ -43,6 +44,8 @@ class AuthServiceTest {
     private UserRepository userRepository;
     @Mock
     private CustomerRepository customerRepository;
+    @Mock
+    private LoginAttemptService loginAttemptService;
     // cost 4: the minimum, keeps the tests fast
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(4);
     private AuthService authService;
@@ -51,7 +54,7 @@ class AuthServiceTest {
     void setUp() {
         authService = new AuthService(userRepository, customerRepository, passwordEncoder,
                 Clock.fixed(NOW, ZoneOffset.UTC), new NimbusJwtEncoder(new ImmutableSecret<>(KEY)),
-                Duration.ofMinutes(15), Duration.ofHours(72));
+                Duration.ofMinutes(15), Duration.ofHours(72), loginAttemptService);
     }
 
     @Test
@@ -93,6 +96,15 @@ class AuthServiceTest {
         assertThat(jwt.getClaimAsString("role")).isEqualTo("ADMIN");
         assertThat(jwt.hasClaim("customerId")).isFalse();
         assertThat(jwt.getExpiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(15)));
+    }
+
+    @Test
+    void login_lockedEmail_throwsWithoutLookingUpTheUser() {
+        when(loginAttemptService.getLockedUntil("alice@example.com")).thenReturn(NOW.plusSeconds(1));
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("alice@example.com", "any-password-123")))
+                .isInstanceOf(LoginLockedException.class);
+        verifyNoInteractions(userRepository);
     }
 
     private User pendingUser(String email, String code, Instant expiresAt) {
