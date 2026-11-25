@@ -1,6 +1,8 @@
 package io.github.dm0m.bankingapi.common;
 
 import java.sql.SQLException;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -31,6 +33,7 @@ import io.github.dm0m.bankingapi.account.UnsupportedCountryException;
 import io.github.dm0m.bankingapi.auth.AlreadyActivatedException;
 import io.github.dm0m.bankingapi.auth.InvalidActivationCodeException;
 import io.github.dm0m.bankingapi.auth.InvalidCredentialsException;
+import io.github.dm0m.bankingapi.auth.LoginLockedException;
 import io.github.dm0m.bankingapi.customer.CustomerNotFoundException;
 import io.github.dm0m.bankingapi.customer.EmailAlreadyExistsException;
 import io.github.dm0m.bankingapi.transfer.AccountsNotDistinctException;
@@ -47,6 +50,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     // Postgres "numeric value out of range", e.g. a balance pushed past NUMERIC(19,4)
     private static final String NUMERIC_VALUE_OUT_OF_RANGE = "22003";
+
+    private final Clock clock;
+
+    public GlobalExceptionHandler(Clock clock) {
+        this.clock = clock;
+    }
 
     // domain exceptions, grouped by HTTP status; each message is safe to show to the client
     @ExceptionHandler({CustomerNotFoundException.class, AccountNotFoundException.class, TransferNotFoundException.class})
@@ -109,6 +118,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         logger.warn("Data integrity violation", ex);
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Request conflicts with existing data");
+    }
+
+    @ExceptionHandler(LoginLockedException.class)
+    public ResponseEntity<ProblemDetail> handleLoginLockedException(LoginLockedException ex) {
+        long seconds = Math.max(1, Duration.between(clock.instant(), ex.getLockedUntil()).toSeconds() + 1);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(seconds))
+                .body(ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
     }
 
     // @Valid failures: list every rejected field instead of the generic "Invalid request content.";

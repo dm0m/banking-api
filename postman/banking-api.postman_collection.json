@@ -768,6 +768,73 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "A12. Login after 5 failures -> 429 with Retry-After",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Five failures lock this run's fresh, unknown email; the request itself is the sixth.",
+									"const failLogin = (left) => {",
+									"  if (left === 0) return;",
+									"  pm.sendRequest({",
+									"    url: pm.variables.get('baseUrl') + '/auth/login',",
+									"    method: 'POST',",
+									"    header: { 'Content-Type': 'application/json' },",
+									"    body: { mode: 'raw', raw: JSON.stringify({ email: pm.variables.get('emailA'), password: 'definitely-not-the-password' }) }",
+									"  }, () => failLogin(left - 1));",
+									"};",
+									"failLogin(5);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('status is 429', () => pm.response.to.have.status(429));",
+									"pm.test('has Retry-After in seconds', () => pm.expect(Number(pm.response.headers.get('Retry-After'))).to.be.above(0));",
+									"pm.test('does not reveal that the email is unknown', () => pm.expect(pm.response.json().detail).to.eql('Too many failed login attempts'));"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{emailA}}\",\n  \"password\": \"correct-horse-battery\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"auth": {
+							"type": "noauth"
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -6706,7 +6773,9 @@
 					"",
 					"// Admin token for the collection's Bearer auth: log in when missing or about to expire.",
 					"const expiresAt = Number(pm.collectionVariables.get('accessTokenExpiresAt') || 0);",
-					"if (!pm.collectionVariables.get('accessToken') || Date.now() > expiresAt) {",
+					"// Login requests need no token; a failed login here would also count towards the lockout.",
+					"const isLogin = pm.request.url.toString().endsWith('/auth/login');",
+					"if (!isLogin && (!pm.collectionVariables.get('accessToken') || Date.now() > expiresAt)) {",
 					"  const adminEmail = pm.variables.get('adminEmail');",
 					"  const adminPassword = pm.variables.get('adminPassword');",
 					"  if (!adminEmail || !adminPassword) {",

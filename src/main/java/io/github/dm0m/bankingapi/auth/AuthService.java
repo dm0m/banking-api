@@ -35,11 +35,13 @@ public class AuthService {
     private final Duration tokenTtl;
     private final Duration activationCodeTtl;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final LoginAttemptService loginAttemptService;
 
     public AuthService(UserRepository userRepository, CustomerRepository customerRepository,
             PasswordEncoder passwordEncoder, Clock clock, JwtEncoder jwtEncoder,
             @Value("${app.jwt.ttl}") Duration tokenTtl,
-            @Value("${app.activation-code.ttl}") Duration activationCodeTtl) {
+            @Value("${app.activation-code.ttl}") Duration activationCodeTtl,
+            LoginAttemptService loginAttemptService) {
         this.userRepository = userRepository;
         this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
@@ -47,6 +49,7 @@ public class AuthService {
         this.jwtEncoder = jwtEncoder;
         this.tokenTtl = tokenTtl;
         this.activationCodeTtl = activationCodeTtl;
+        this.loginAttemptService = loginAttemptService;
     }
 
     /**
@@ -104,36 +107,43 @@ public class AuthService {
         user.setActivationExpiresAt(null);
     }
 
-    @Transactional(readOnly = true)
     public TokenResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(Emails.normalize(request.email())).orElse(null);
+        String email = Emails.normalize(request.email());
+        Instant lockedUntil = loginAttemptService.getLockedUntil(email);
+        if (lockedUntil != null && lockedUntil.isAfter(clock.instant())) {
+            throw new LoginLockedException(lockedUntil);
+        }
+        User user = userRepository.findByEmail(email).orElse(null);
         String passwordHash = user == null || user.getPasswordHash() == null
                 ? DUMMY_PASSWORD_HASH
                 : user.getPasswordHash();
         // always hash so response time doesn't reveal which emails exist
         boolean passwordMatches = passwordEncoder.matches(request.password(), passwordHash);
-
         if (user == null || !user.isActivated() || !passwordMatches) {
+            loginAttemptService.recordFailure(email);
             throw new InvalidCredentialsException();
         }
-
-        Instant now = clock.instant();
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("banking-api")
-                .issuedAt(now)
-                .expiresAt(now.plus(tokenTtl))
-                .subject(user.getId().toString())
-                .claim("role", user.getRole().name())
-                // admins have no customer
-                .claims(c -> {
-                    if (user.getCustomer() != null) {
-                        c.put("customerId", user.getCustomer().getId());
-                    }
-                })
-                .build();
+        loginAttemptService.clearCount(email);
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        String token = jwtEncoder.encode(JwtEncoderParameters.from(header, buildClaims(user))).getTokenValue();
         return new TokenResponse(token, "Bearer", tokenTtl.toSeconds());
+    }
+
+    private JwtClaimsSet buildClaims(User user) {
+        Instant now = clock.instant();
+        return JwtClaimsSet.builder()
+            .issuer("banking-api")
+            .issuedAt(now)
+            .expiresAt(now.plus(tokenTtl))
+            .subject(user.getId().toString())
+            .claim("role", user.getRole().name())
+            // admins have no customer
+            .claims(c -> {
+                if (user.getCustomer() != null) {
+                    c.put("customerId", user.getCustomer().getId());
+                }
+            })
+            .build();
     }
 
 }
